@@ -6,8 +6,6 @@ import Ngo from '../models/Ngo.js';
 import { generateAndUpload80GReceipt } from '../utils/pdfGenerator.js';
 import { sendReceiptEmail } from '../utils/emailService.js'; 
 
-// @desc    Create a Razorpay Order
-// @route   POST /api/payments/order
 export const createOrder = async (req, res) => {
   try {
     const { amount, currency = 'INR', receipt } = req.body;
@@ -30,8 +28,6 @@ export const createOrder = async (req, res) => {
   }
 };
 
-// @desc    Verify Razorpay Payment & Save Donor
-// @route   POST /api/payments/verify
 export const verifyPayment = async (req, res) => {
   try {
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature, donorInfo, campaignId } = req.body;
@@ -40,7 +36,6 @@ export const verifyPayment = async (req, res) => {
       return res.status(400).json({ message: "Missing payment or campaign details" });
     }
 
-    // 1. Verify Signature
     const body = razorpay_order_id + "|" + razorpay_payment_id;
     const expectedSignature = crypto
       .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
@@ -51,7 +46,6 @@ export const verifyPayment = async (req, res) => {
       return res.status(400).json({ message: "Payment verification failed. Invalid signature." });
     }
 
-    // 2. Fetch Campaign to find the NGO Owner
     const campaign = await Campaign.findById(campaignId);
     if (!campaign) {
       return res.status(404).json({ message: "Campaign not found" });
@@ -59,7 +53,6 @@ export const verifyPayment = async (req, res) => {
     
     const targetNgoId = campaign.ngo || campaign.ngoId;
 
-    // 3. Save the legitimate donor to the database FIRST
     const newDonor = await Donor.create({
       name: donorInfo.name,
       email: donorInfo.email,
@@ -70,11 +63,9 @@ export const verifyPayment = async (req, res) => {
       campaignId: campaignId
     });
 
-    // 4. Increment campaign total
     campaign.raised = (campaign.raised || 0) + donorInfo.amount;
     await campaign.save();
 
-    // 5. --- THE PDF & EMAIL AUTOMATION ---
     let receiptUrl = null;
     const receivingNgo = await Ngo.findById(targetNgoId);
       
@@ -85,7 +76,8 @@ export const verifyPayment = async (req, res) => {
         await newDonor.save();
         console.log(`✅ 80G Receipt Generated and Uploaded: ${receiptUrl}`);
 
-        sendReceiptEmail(
+        // THE CRITICAL FIX: The server will now wait to send the email!
+        await sendReceiptEmail(
           donorInfo.email, 
           donorInfo.name, 
           receivingNgo.name, 
@@ -110,8 +102,6 @@ export const verifyPayment = async (req, res) => {
   }
 };
 
-// @desc    Get logged in user's donation history (For Donor Dashboard)
-// @route   GET /api/payments/my
 export const getMyDonations = async (req, res) => {
   try {
     const donations = await Donor.find({ user: req.user._id })
@@ -125,30 +115,20 @@ export const getMyDonations = async (req, res) => {
   }
 };
 
-// ==================================================================
-// NEW: NGO CREATOR STUDIO LEDGER
-// ==================================================================
-
-// @desc    Get all donations for a specific NGO's campaigns
-// @route   GET /api/payments/ngo-donations
 export const getNgoDonations = async (req, res) => {
   try {
     const user = req.user || req.ngo;
     if (!user) return res.status(401).json({ message: "Not authorized" });
 
-    // 1. Find all campaigns owned by this NGO
     const campaigns = await Campaign.find({
       $or: [{ ngo: user._id }, { ngoId: user._id }]
     });
     
-    // Map them to strings for a safe database search
     const campaignIds = campaigns.map(c => c._id.toString());
 
-    // 2. Find all donors who donated to any of these campaign IDs
     const donations = await Donor.find({ campaignId: { $in: campaignIds } })
       .sort({ createdAt: -1 });
 
-    // 3. Attach the readable campaign title and format the donor name for the frontend
     const enrichedDonations = donations.map(donor => {
       const camp = campaigns.find(c => c._id.toString() === String(donor.campaignId));
       return {
@@ -165,17 +145,10 @@ export const getNgoDonations = async (req, res) => {
   }
 };
 
-// ==================================================================
-// NEW: ADMIN GLOBAL LEDGER
-// ==================================================================
-
-// @desc    Get ALL donations across the platform
-// @route   GET /api/payments/all-donations
 export const getAllDonations = async (req, res) => {
   try {
     const donations = await Donor.find({}).sort({ createdAt: -1 });
     
-    // Format the donor name for the frontend table
     const enrichedDonations = donations.map(donor => ({
       ...donor.toObject(),
       donorName: donor.name || 'Anonymous'

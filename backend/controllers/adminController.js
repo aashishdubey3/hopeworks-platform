@@ -1,6 +1,6 @@
 import Ngo from '../models/Ngo.js';
 import Campaign from '../models/Campaign.js';
-import CsrInquiry from '../models/CsrInquiry.js'; // <-- NEW: Import the CSR model
+import CsrInquiry from '../models/CsrInquiry.js';
 
 // @desc    Get all NGOs
 // @route   GET /api/admin/ngos
@@ -20,18 +20,30 @@ export const toggleNgoStatus = async (req, res) => {
     const ngo = await Ngo.findById(req.params.id);
     if (!ngo) return res.status(404).json({ message: "NGO not found" });
 
-    // If it's a new application, the first click Approves it.
+    // Ensure backwards compatibility with older NGO records
+    if (!ngo.status) ngo.status = 'pending';
+    if (typeof ngo.isBanned === 'undefined') ngo.isBanned = false;
+
+    // The clear, explicit logic tree:
     if (ngo.status === 'pending') {
+      // 1. Initial Approval
       ngo.status = 'approved';
+      ngo.isBanned = false;
       await ngo.save();
       return res.json({ message: "NGO Officially Verified & Approved", ngo });
-    } 
-    
-    // If it's already approved, the click Toggles the Ban status.
-    ngo.isBanned = !ngo.isBanned;
-    await ngo.save();
+    } else if (!ngo.isBanned) {
+      // 2. Suspend an Active NGO
+      ngo.isBanned = true;
+      // We do not change 'status' away from 'approved' because they are still a registered entity, just currently suspended.
+      await ngo.save();
+      return res.json({ message: "NGO Suspended successfully", ngo });
+    } else {
+      // 3. Reinstate a Suspended NGO
+      ngo.isBanned = false;
+      await ngo.save();
+      return res.json({ message: "NGO Reinstated successfully", ngo });
+    }
 
-    res.json({ message: `NGO ${ngo.isBanned ? 'suspended' : 'reinstated'} successfully`, ngo });
   } catch (error) {
     res.status(500).json({ message: "Server error updating NGO status" });
   }
