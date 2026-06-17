@@ -97,7 +97,8 @@ export const forgotPassword = async (req, res) => {
     ngo.resetPasswordExpires = Date.now() + 15 * 60 * 1000; 
     await ngo.save();
 
-    const resetUrl = `http://localhost:5173/reset-password/${resetToken}`;
+    // Replace localhost with your actual live Vercel domain
+const resetUrl = `https://hopeworks-frontend.vercel.app/reset-password/${resetToken}`;
     const message = `You requested a password reset. Please click this link to set a new password: \n\n ${resetUrl} \n\n This link expires in 15 minutes.`;
 
     // THE FIX: Fire and forget! Instant response for the user.
