@@ -117,8 +117,10 @@ export const updateCampaign = async (req, res) => {
       return res.status(404).json({ message: 'Campaign not found' });
     }
 
-    // Security: Only the NGO who created it can edit it
-    if (campaign.ngo.toString() !== user._id.toString() && campaign.ngoId.toString() !== user._id.toString()) {
+    // BULLETPROOF OWNERSHIP CHECK (Prevents the 500 Crash)
+    const campaignOwnerId = campaign.ngo || campaign.ngoId;
+    
+    if (!campaignOwnerId || String(campaignOwnerId) !== String(user._id)) {
       return res.status(401).json({ message: 'Not authorized to edit this campaign' });
     }
 
@@ -143,7 +145,7 @@ export const updateCampaign = async (req, res) => {
     res.json(updatedCampaign);
   } catch (error) {
     console.error("Update Campaign Error:", error);
-    res.status(500).json({ message: 'Server error updating campaign.' });
+    res.status(500).json({ message: 'Server error updating campaign.', error: error.message });
   }
 };
 
