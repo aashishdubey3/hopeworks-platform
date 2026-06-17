@@ -169,9 +169,14 @@ export default function Layout({ children }) {
           </div>
           <div className="border-t border-white/10 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-sm">
             <p>© {new Date().getFullYear()} HopeWorks Technologies. All rights reserved.</p>
-            <div className="flex gap-8">
+            <div className="flex gap-4 items-center">
               <Link to="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
               <Link to="/terms" className="hover:text-white transition-colors">Terms of Service</Link>
+              
+              {/* THE DISCRETE ADMIN LINK */}
+              <Link to="/admin" className="text-xs font-bold text-slate-500 hover:text-[#00E5FF] transition-colors ml-4 border-l border-white/10 pl-4">
+                Admin Portal
+              </Link>
             </div>
           </div>
         </div>
