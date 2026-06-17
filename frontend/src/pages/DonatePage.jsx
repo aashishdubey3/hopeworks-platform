@@ -1,8 +1,19 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import FormInput from '../components/FormInput';
 import Button from '../components/Button';
 import api from '../utils/api';
+
+// THE LIFESAVER: Dynamically loads Razorpay directly into React
+const loadRazorpayScript = () => {
+  return new Promise((resolve) => {
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+};
 
 export default function DonatePage() {
   const { id } = useParams();  
@@ -12,14 +23,19 @@ export default function DonatePage() {
   const [receiptUrl, setReceiptUrl] = useState('');
   const [error, setError] = useState('');
 
+  // Pre-load the script in the background as soon as the page opens
+  useEffect(() => {
+    loadRazorpayScript();
+  }, []);
+
   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
   const isHighValue = Number(formData.amount) >= 10000;
 
   const handlePayment = async (e) => {
     e.preventDefault();
+    setError('');
     
-    // STRICT KYC REGEX VALIDATION
     if (isHighValue) {
       const panValue = formData.pan.trim().toUpperCase();
       const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
@@ -35,14 +51,16 @@ export default function DonatePage() {
       formData.pan = panValue; 
     }
 
-    // THE AD-BLOCKER SHIELD: Check if Razorpay loaded before proceeding
-    if (typeof window.Razorpay === 'undefined') {
-      setError('Payment gateway blocked. Please temporarily disable your ad-blocker or Brave Shields and refresh the page.');
+    setStep(2);
+
+    // Double-check the script is loaded before continuing
+    const isScriptLoaded = await loadRazorpayScript();
+    
+    if (!isScriptLoaded || typeof window.Razorpay === 'undefined') {
+      setError('Payment gateway failed to load. Please check your internet connection or disable strict ad-blockers.');
+      setStep(1);
       return;
     }
-
-    setError('');
-    setStep(2);
 
     try {
       const orderRes = await api.post('/payments/order', { amount: Number(formData.amount) });
@@ -81,7 +99,6 @@ export default function DonatePage() {
         },
         prefill: { name: formData.name, email: formData.email },
         theme: { color: "#1C2331" },
-        // THE DISMISS HANDLER: Reverts to form if user closes the popup
         modal: {
           ondismiss: function () {
             setError('Payment was cancelled.');
