@@ -10,6 +10,7 @@ export default function AdminDashboard() {
   const [donations, setDonations] = useState([]);
   const [loading, setLoading] = useState(true);
   
+  // Audit Modal State
   const [auditNgo, setAuditNgo] = useState(null); 
 
   const fetchData = async () => {
@@ -43,7 +44,7 @@ export default function AdminDashboard() {
       try {
         await api.put(`/admin/ngo/${id}/status`);
         fetchData(); 
-        setAuditNgo(null); 
+        setAuditNgo(null); // Close modal if open
       } catch (error) {
         alert("Failed to update organization status.");
       }
@@ -75,9 +76,11 @@ export default function AdminDashboard() {
   return (
     <div className="min-h-screen bg-[#F8FAFC] pb-24 font-sans">
       
+      {/* --- SECURE AUDIT MODAL --- */}
       {auditNgo && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0B2948]/90 backdrop-blur-sm p-4 animate-fade-in">
           <div className="bg-white rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            
             <div className="bg-[#0B2948] p-6 text-white flex justify-between items-center shrink-0">
               <div>
                 <h2 className="text-2xl font-black font-serif tracking-tight">Organization Audit View</h2>
@@ -87,6 +90,7 @@ export default function AdminDashboard() {
                 <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
               </button>
             </div>
+
             <div className="p-8 overflow-y-auto space-y-8">
               <div className="grid grid-cols-2 gap-6">
                 <div>
@@ -99,6 +103,7 @@ export default function AdminDashboard() {
                 </div>
                 <div>
                   <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Registration Date</p>
+                  {/* THE FIX: Safe Date Parsing */}
                   <p className="text-sm font-bold text-slate-700">{new Date(auditNgo.createdAt || Date.now()).toLocaleDateString()}</p>
                 </div>
                 <div>
@@ -106,6 +111,7 @@ export default function AdminDashboard() {
                   {auditNgo.status === 'pending' ? <span className="text-amber-600 font-black uppercase text-sm">Pending Verification</span> : auditNgo.isBanned ? <span className="text-red-600 font-black uppercase text-sm">Suspended</span> : <span className="text-emerald-600 font-black uppercase text-sm">Verified</span>}
                 </div>
               </div>
+
               <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200 grid grid-cols-2 gap-6">
                 <div>
                   <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Darpan ID</p>
@@ -120,9 +126,16 @@ export default function AdminDashboard() {
                   <p className="text-sm font-bold text-slate-700">{auditNgo.address || 'Not Provided'}</p>
                 </div>
               </div>
+
+              <div>
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Platform Summary</p>
+                <p className="text-sm text-slate-600 leading-relaxed bg-slate-50 p-4 rounded-xl border border-slate-100">{auditNgo.about || 'No description provided by the organization.'}</p>
+              </div>
             </div>
+
             <div className="p-6 bg-slate-50 border-t border-slate-200 flex justify-end gap-4 shrink-0">
               <button onClick={() => setAuditNgo(null)} className="px-6 py-2.5 rounded-xl font-bold text-slate-500 hover:bg-slate-200 transition-colors">Cancel</button>
+              
               {auditNgo.status === 'pending' ? (
                 <button onClick={() => handleToggleStatus(auditNgo._id, auditNgo.status, auditNgo.isBanned)} className="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-black uppercase tracking-wider text-sm rounded-xl shadow-lg transition-all">
                   Approve & Verify Entity
@@ -136,7 +149,9 @@ export default function AdminDashboard() {
           </div>
         </div>
       )}
+      {/* --------------------------- */}
 
+      {/* Professional Admin Header */}
       <div className="bg-[#0B2948] pt-16 pb-24 px-6 text-white border-b-4 border-[#007A78]">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
           <div>
@@ -173,6 +188,7 @@ export default function AdminDashboard() {
         ) : (
           <div className="bg-white border border-slate-100 rounded-2xl shadow-xl overflow-x-auto">
             
+            {/* TAB 1: NGOs */}
             {activeTab === 'ngos' && (
               <table className="w-full text-left border-collapse whitespace-nowrap min-w-max">
                 <thead>
@@ -214,6 +230,7 @@ export default function AdminDashboard() {
               </table>
             )}
 
+            {/* TAB 2: CAMPAIGNS */}
             {activeTab === 'campaigns' && (
               <table className="w-full text-left border-collapse whitespace-nowrap min-w-max">
                 <thead>
@@ -254,6 +271,7 @@ export default function AdminDashboard() {
               </table>
             )}
 
+            {/* TAB 3: GLOBAL TRANSACTIONS (DONATIONS) */}
             {activeTab === 'donations' && (
               <table className="w-full text-left border-collapse whitespace-nowrap min-w-max">
                 <thead>
@@ -286,6 +304,7 @@ export default function AdminDashboard() {
               </table>
             )}
 
+            {/* TAB 4: CSR LEADS */}
             {activeTab === 'csr' && (
               <table className="w-full text-left border-collapse whitespace-nowrap min-w-max">
                 <thead>
@@ -304,7 +323,8 @@ export default function AdminDashboard() {
                       <tr key={lead._id} className={`${lead.status === 'Pending Review' ? 'bg-[#007A78]/5' : 'hover:bg-slate-50'} transition-colors`}>
                         <td className="p-5">
                           <p className="font-bold text-[#0B2948] text-sm">{lead.companyName}</p>
-                          <p className="text-[10px] text-slate-400 mt-1 font-medium">Logged: {new Date(lead.createdAt).toLocaleDateString()}</p>
+                          {/* THE FIX: Safe Date Parsing */}
+                          <p className="text-[10px] text-slate-400 mt-1 font-medium">Logged: {new Date(lead.createdAt || Date.now()).toLocaleDateString()}</p>
                         </td>
                         <td className="p-5">
                           <p className="text-sm font-bold text-slate-700">{lead.contactName}</p>
@@ -314,7 +334,7 @@ export default function AdminDashboard() {
                           </div>
                         </td>
                         <td className="p-5">
-                          <p className="text-sm font-black text-[#007A78]">₹{lead.budget.toLocaleString('en-IN')}</p>
+                          <p className="text-sm font-black text-[#007A78]">₹{lead.budget?.toLocaleString('en-IN')}</p>
                           <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mt-1">{lead.focusArea}</p>
                         </td>
                         <td className="p-5 text-right">

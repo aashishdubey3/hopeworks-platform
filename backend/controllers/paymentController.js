@@ -6,6 +6,8 @@ import Ngo from '../models/Ngo.js';
 import { generateAndUpload80GReceipt } from '../utils/pdfGenerator.js';
 import { sendReceiptEmail } from '../utils/emailService.js'; 
 
+// @desc    Create a Razorpay Order
+// @route   POST /api/payments/order
 export const createOrder = async (req, res) => {
   try {
     const { amount, currency = 'INR', receipt } = req.body;
@@ -28,6 +30,8 @@ export const createOrder = async (req, res) => {
   }
 };
 
+// @desc    Verify Razorpay Payment & Save Donor
+// @route   POST /api/payments/verify
 export const verifyPayment = async (req, res) => {
   try {
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature, donorInfo, campaignId } = req.body;
@@ -36,6 +40,7 @@ export const verifyPayment = async (req, res) => {
       return res.status(400).json({ message: "Missing payment or campaign details" });
     }
 
+    // 1. Verify Signature
     const body = razorpay_order_id + "|" + razorpay_payment_id;
     const expectedSignature = crypto
       .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
@@ -46,6 +51,7 @@ export const verifyPayment = async (req, res) => {
       return res.status(400).json({ message: "Payment verification failed. Invalid signature." });
     }
 
+    // 2. Fetch Campaign to find the NGO Owner
     const campaign = await Campaign.findById(campaignId);
     if (!campaign) {
       return res.status(404).json({ message: "Campaign not found" });
@@ -53,6 +59,7 @@ export const verifyPayment = async (req, res) => {
     
     const targetNgoId = campaign.ngo || campaign.ngoId;
 
+    // 3. Save the legitimate donor to the database FIRST
     const newDonor = await Donor.create({
       name: donorInfo.name,
       email: donorInfo.email,
@@ -63,38 +70,47 @@ export const verifyPayment = async (req, res) => {
       campaignId: campaignId
     });
 
+    // 4. Increment campaign total
     campaign.raised = (campaign.raised || 0) + donorInfo.amount;
     await campaign.save();
 
-    let receiptUrl = null;
-    const receivingNgo = await Ngo.findById(targetNgoId);
-      
-    if (receivingNgo) {
-      try {
-        receiptUrl = await generateAndUpload80GReceipt(newDonor, receivingNgo);
-        newDonor.taxReceiptUrl = receiptUrl; 
-        await newDonor.save();
-        console.log(`✅ 80G Receipt Generated and Uploaded: ${receiptUrl}`);
-
-        // THE CRITICAL FIX: The server will now wait to send the email!
-        await sendReceiptEmail(
-          donorInfo.email, 
-          donorInfo.name, 
-          receivingNgo.name, 
-          donorInfo.amount, 
-          receiptUrl
-        );
-
-      } catch (pdfOrEmailError) {
-        console.error("⚠️ PDF or Email Engine Failed:", pdfOrEmailError);
-      }
-    }
-
+    // 🚀 THE ULTIMATE SPEED FIX: Respond to the frontend INSTANTLY!
+    // We do NOT wait for the PDF or Email. We let the user see the Success Screen immediately.
     res.status(200).json({ 
       success: true, 
-      message: "Payment verified.", 
-      receiptUrl: receiptUrl 
+      message: "Payment verified. Receipt generating in background.", 
+      receiptUrl: null // This triggers the "Your receipt is generating..." message on the frontend UI
     });
+
+    // 5. --- FIRE-AND-FORGET: THE PDF & EMAIL AUTOMATION ---
+    // This runs completely silently in the background of your Render server.
+    const processReceiptInBackground = async () => {
+      try {
+        const receivingNgo = await Ngo.findById(targetNgoId);
+        if (receivingNgo) {
+          // A. Generate the PDF
+          const generatedUrl = await generateAndUpload80GReceipt(newDonor, receivingNgo);
+          newDonor.taxReceiptUrl = generatedUrl; 
+          await newDonor.save();
+          console.log(`✅ 80G Receipt Generated and Uploaded: ${generatedUrl}`);
+
+          // B. Send the Email
+          await sendReceiptEmail(
+            donorInfo.email, 
+            donorInfo.name, 
+            receivingNgo.name, 
+            donorInfo.amount, 
+            generatedUrl
+          );
+          console.log(`✅ Receipt Email successfully sent to ${donorInfo.email}`);
+        }
+      } catch (bgError) {
+        console.error("⚠️ Background PDF or Email Engine Failed:", bgError);
+      }
+    };
+
+    // Trigger the background function (Notice there is no "await" here!)
+    processReceiptInBackground();
 
   } catch (error) {
     console.error("Verification error:", error);
@@ -102,6 +118,8 @@ export const verifyPayment = async (req, res) => {
   }
 };
 
+// @desc    Get logged in user's donation history (For Donor Dashboard)
+// @route   GET /api/payments/my
 export const getMyDonations = async (req, res) => {
   try {
     const donations = await Donor.find({ user: req.user._id })
@@ -115,6 +133,12 @@ export const getMyDonations = async (req, res) => {
   }
 };
 
+// ==================================================================
+// NGO CREATOR STUDIO LEDGER
+// ==================================================================
+
+// @desc    Get all donations for a specific NGO's campaigns
+// @route   GET /api/payments/ngo-donations
 export const getNgoDonations = async (req, res) => {
   try {
     const user = req.user || req.ngo;
@@ -145,6 +169,12 @@ export const getNgoDonations = async (req, res) => {
   }
 };
 
+// ==================================================================
+// ADMIN GLOBAL LEDGER
+// ==================================================================
+
+// @desc    Get ALL donations across the platform
+// @route   GET /api/payments/all-donations
 export const getAllDonations = async (req, res) => {
   try {
     const donations = await Donor.find({}).sort({ createdAt: -1 });

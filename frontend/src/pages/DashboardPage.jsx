@@ -20,17 +20,19 @@ export default function DashboardPage() {
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [campaigns, setCampaigns] = useState([]);
-  const [donations, setDonations] = useState([]);
+  const [donations, setDonations] = useState([]); // Donor Ledger State
 
   useEffect(() => {
     const fetchData = async () => {
       const token = localStorage.getItem('token');
       
+      // Security Check: Make sure token and context exist
       if (!token || !loggedInNgo) {
         navigate('/login');
         return;
       }
 
+      // 1. Fetch Profile Data using the verified ID from Context
       try {
         const userId = loggedInNgo._id || loggedInNgo.id;
         const { data } = await api.get(`/ngos/${userId}`);
@@ -46,15 +48,18 @@ export default function DashboardPage() {
           avatar: data.avatar || data.logo || '' 
         });
 
+        // 🔥 THE INSTANT SYNC FIX: Auto-update the Context brain if the avatar is missing
         if (data.avatar && loggedInNgo.avatar !== data.avatar) {
           setLoggedInNgo(prev => ({ ...prev, avatar: data.avatar }));
         }
+
       } catch (error) {
         console.error("Failed to fetch profile", error);
       } finally {
         setLoadingProfile(false);
       }
 
+      // 2. Fetch My Campaigns Data
       try {
         const response = await api.get('/campaigns/my'); 
         setCampaigns(response.data);
@@ -64,6 +69,7 @@ export default function DashboardPage() {
         setLoadingCampaigns(false);
       }
 
+      // 3. Fetch NGO Donation History
       try {
         const donationRes = await api.get('/payments/ngo-donations'); 
         setDonations(donationRes.data);
@@ -72,11 +78,13 @@ export default function DashboardPage() {
       }
     };
 
+    // Ensure we don't trigger fetches until Context is ready
     if (loggedInNgo) {
       fetchData();
     }
   }, [navigate, loggedInNgo, setLoggedInNgo]);
 
+  // --- HANDLERS ---
   const handleProfileChange = (e) => {
     setProfile({ ...profile, [e.target.name]: e.target.value });
   };
@@ -109,7 +117,10 @@ export default function DashboardPage() {
       
       setUpdateMessage('Profile & Verification badges updated securely.');
       setProfile(prev => ({ ...prev, avatar: data.avatar }));
+      
+      // Automatically update context so the Navbar catches changes immediately
       setLoggedInNgo({ ...loggedInNgo, avatar: data.avatar, name: data.name });
+
     } catch (error) {
       const errorMessage = error.response?.data?.message || error.message || 'Failed to update profile. Ensure image is < 10MB.';
       alert(`Error: ${errorMessage}`);
@@ -198,10 +209,11 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* Dashboard Main Content */}
       <div className="max-w-7xl mx-auto px-6 -mt-20 relative z-20">
         <div className="bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col md:flex-row min-h-[700px]">
           
-          {/* Sidebar */}
+          {/* Sidebar Navigation */}
           <div className="w-full md:w-72 bg-slate-50 border-r border-slate-100 p-8">
             <nav className="space-y-3">
               <button onClick={() => setActiveTab('profile')} className={`w-full text-left px-5 py-4 rounded-xl font-bold text-sm transition-all flex items-center gap-3 ${activeTab === 'profile' ? 'bg-[#0B2948] text-white shadow-md' : 'text-slate-500 hover:bg-slate-200/50 hover:text-[#0B2948]'}`}>
@@ -217,13 +229,16 @@ export default function DashboardPage() {
                 Donor Ledger
               </button>
             </nav>
+
             <div className="mt-12 p-5 bg-blue-50 rounded-2xl border border-blue-100">
               <p className="text-xs font-bold text-blue-400 uppercase tracking-wider mb-1">Total Impact</p>
               <p className="text-2xl font-black text-[#0B2948]">₹{totalRaised.toLocaleString('en-IN')}</p>
             </div>
           </div>
 
+          {/* Tab Content Area */}
           <div className="flex-1 p-8 md:p-12 overflow-hidden">
+            
             {/* TAB 1: PROFILE */}
             {activeTab === 'profile' && (
               <div className="animate-fade-in max-w-3xl">
@@ -231,22 +246,26 @@ export default function DashboardPage() {
                   <h2 className="text-3xl font-serif font-black text-[#0B2948]">Organization Profile</h2>
                   <p className="text-slate-500 mt-2 font-medium">Manage your public identity and legal verification.</p>
                 </div>
+
                 {!isVerified && (
                   <div className="bg-yellow-50 border border-yellow-200 p-5 mb-8 rounded-2xl flex gap-4 items-start shadow-sm">
                     <svg className="w-6 h-6 text-yellow-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
                     <div>
                       <p className="text-sm text-yellow-800 font-bold">Action Required: Verification Pending</p>
-                      <p className="text-sm text-yellow-700 mt-1">Provide your Darpan ID or PAN Number below to unlock the official "Verified" badge.</p>
+                      <p className="text-sm text-yellow-700 mt-1">Provide your Darpan ID or PAN Number below to unlock the official "Verified" badge across the platform.</p>
                     </div>
                   </div>
                 )}
+
                 {updateMessage && (
                   <div className="bg-[#E6F2F2] border border-[#007A78]/20 text-[#007A78] px-5 py-4 rounded-2xl mb-8 text-sm font-bold flex items-center gap-3 shadow-sm">
                     <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"></path></svg>
                     {updateMessage}
                   </div>
                 )}
+
                 <form onSubmit={handleProfileSubmit} className="space-y-8">
+                  
                   <div className="flex items-center gap-8 bg-slate-50 p-6 rounded-2xl border border-slate-100">
                     <div className="relative group w-24 h-24 rounded-full overflow-hidden border-4 border-white shadow-lg bg-slate-200 shrink-0">
                       {(imagePreview || profile.avatar) ? (
@@ -264,6 +283,7 @@ export default function DashboardPage() {
                       <p className="text-sm text-slate-500 mb-2">Upload a high-res JPG or PNG. 1:1 aspect ratio recommended.</p>
                     </div>
                   </div>
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                       <label className="block text-sm font-bold text-[#0B2948] mb-2">Organization Name</label>
@@ -274,16 +294,21 @@ export default function DashboardPage() {
                       <input type="text" name="cause" placeholder="e.g., Education, Healthcare" value={profile.cause} onChange={handleProfileChange} className="w-full px-5 py-3.5 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#007A78] transition-all font-medium" />
                     </div>
                   </div>
+
                   <div>
                     <label className="block text-sm font-bold text-[#0B2948] mb-2">About Us</label>
                     <textarea name="about" rows="4" value={profile.about} onChange={handleProfileChange} className="w-full px-5 py-3.5 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#007A78] transition-all font-medium leading-relaxed"></textarea>
                   </div>
+
                   <div>
                     <label className="block text-sm font-bold text-[#0B2948] mb-2">Headquarters Address</label>
                     <input type="text" name="address" value={profile.address} onChange={handleProfileChange} className="w-full px-5 py-3.5 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#007A78] transition-all font-medium" />
                   </div>
+
                   <hr className="border-slate-100 my-10" />
+                  
                   <h3 className="text-xl font-serif font-black text-[#0B2948] mb-6">Legal & Compliance Identity</h3>
+                  
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                       <label className="block text-sm font-bold text-[#0B2948] mb-2">NGO Darpan ID</label>
@@ -294,6 +319,7 @@ export default function DashboardPage() {
                       <input type="text" name="panNumber" value={profile.panNumber} onChange={handleProfileChange} placeholder="10-digit Alphanumeric" className="w-full px-5 py-3.5 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#007A78] transition-all font-medium font-mono text-sm uppercase" />
                     </div>
                   </div>
+
                   <button type="submit" className="mt-8 bg-[#0B2948] hover:bg-[#007A78] text-white font-black text-lg py-4 px-10 rounded-xl transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-1 w-full md:w-auto">
                     Save Profile Changes
                   </button>
@@ -301,9 +327,10 @@ export default function DashboardPage() {
               </div>
             )}
 
-            {/* TAB 2: CAMPAIGNS */}
+            {/* TAB 2: CAMPAIGNS & COMPLIANCE */}
             {activeTab === 'campaigns' && (
               <div className="animate-fade-in">
+                
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-10 gap-4 border-b border-slate-100 pb-6">
                   <div>
                     <h2 className="text-3xl font-serif font-black text-[#0B2948]">Campaign Manager</h2>
@@ -313,11 +340,12 @@ export default function DashboardPage() {
                     + Create Campaign
                   </Link>
                 </div>
+
                 <div className="mb-12 flex flex-col md:flex-row justify-between items-start md:items-center bg-[#E6F2F2] p-8 border border-[#007A78]/20 rounded-2xl shadow-sm">
                   <div className="mb-6 md:mb-0 max-w-xl">
                     <h3 className="text-2xl font-black text-[#0B2948] mb-2 font-serif">Income Tax Compliance</h3>
                     <p className="text-[#0B2948]/80 text-sm leading-relaxed font-medium">
-                      Download your official donor ledger to file <strong>Form 10BD</strong> by May 31st.
+                      Download your official donor ledger to file <strong>Form 10BD</strong> by May 31st. This CSV is mathematically verified and formatted to government standards.
                     </p>
                   </div>
                   <button onClick={handleDownload10BD} className="bg-[#0B2948] hover:bg-[#06182C] text-white px-8 py-4 rounded-xl font-bold transition-all shadow-lg transform hover:-translate-y-1 whitespace-nowrap flex items-center gap-3">
@@ -325,8 +353,10 @@ export default function DashboardPage() {
                     Download 10BD (CSV)
                   </button>
                 </div>
+
                 <div>
                   <h3 className="text-xl font-black text-[#0B2948] mb-6">Your Active Ledgers</h3>
+                  
                   {loadingCampaigns ? (
                     <div className="text-slate-400 animate-pulse font-bold">Synchronizing ledger data...</div>
                   ) : campaigns.length === 0 ? (
@@ -343,16 +373,21 @@ export default function DashboardPage() {
                         const raised = campaign.raised || campaign.raisedAmount || 0;
                         const goal = campaign.goal || campaign.goalAmount || 1;
                         const progress = Math.min((raised / goal) * 100, 100);
+
                         return (
                           <div key={campaign._id} className="bg-white border border-slate-100 rounded-3xl shadow-sm overflow-hidden flex flex-col hover:shadow-xl transition-all duration-300 group">
                             <div className="relative h-48 overflow-hidden bg-slate-100 cursor-pointer" onClick={() => navigate(`/campaign/${campaign._id}`)}>
                               <img src={getImageUrl(campaign.image)} alt={campaign.title} className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700" />
-                              <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-md px-3 py-1 rounded-full text-xs font-black text-[#0B2948] shadow-sm uppercase tracking-wider">Active</div>
+                              <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-md px-3 py-1 rounded-full text-xs font-black text-[#0B2948] shadow-sm uppercase tracking-wider">
+                                Active
+                              </div>
                             </div>
+                            
                             <div className="p-6 flex-grow flex flex-col">
                               <h3 className="font-bold text-lg text-[#0B2948] mb-4 line-clamp-2 leading-tight cursor-pointer hover:text-[#007A78]" onClick={() => navigate(`/campaign/${campaign._id}`)}>
                                 {campaign.title}
                               </h3>
+                              
                               <div className="mt-auto">
                                 <div className="flex justify-between text-xs font-bold mb-2">
                                   <span className="text-[#007A78]">₹{raised.toLocaleString('en-IN')} raised</span>
@@ -361,6 +396,7 @@ export default function DashboardPage() {
                                 <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden mb-6">
                                   <div className="bg-[#007A78] h-full rounded-full transition-all duration-1000" style={{ width: `${progress}%` }}></div>
                                 </div>
+
                                 <div className="flex gap-3 pt-4 border-t border-slate-50">
                                   <button onClick={() => navigate(`/campaigns/edit/${campaign._id}`)} className="flex-1 bg-slate-50 text-[#0B2948] font-bold py-3 rounded-xl border border-slate-200 hover:bg-[#0B2948] hover:text-white transition-colors text-sm">
                                     Edit Details
@@ -377,6 +413,7 @@ export default function DashboardPage() {
                     </div>
                   )}
                 </div>
+
               </div>
             )}
 
@@ -387,6 +424,7 @@ export default function DashboardPage() {
                   <h2 className="text-3xl font-serif font-black text-[#0B2948]">Donor Ledger</h2>
                   <p className="text-slate-500 mt-2 font-medium">Track incoming capital and supporter details.</p>
                 </div>
+                
                 <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden min-w-[600px]">
                   <table className="w-full text-left border-collapse whitespace-nowrap">
                     <thead className="bg-slate-50 border-b border-slate-200 text-[11px] text-slate-500 uppercase tracking-widest font-black">
@@ -416,6 +454,7 @@ export default function DashboardPage() {
                 </div>
               </div>
             )}
+
           </div>
         </div>
       </div>
