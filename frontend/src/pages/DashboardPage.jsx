@@ -20,6 +20,7 @@ export default function DashboardPage() {
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [campaigns, setCampaigns] = useState([]);
+  const [donations, setDonations] = useState([]); // Donor Ledger State
 
   useEffect(() => {
     const fetchData = async () => {
@@ -66,6 +67,14 @@ export default function DashboardPage() {
         console.error("Failed to fetch campaigns", error);
       } finally {
         setLoadingCampaigns(false);
+      }
+
+      // 3. Fetch NGO Donation History
+      try {
+        const donationRes = await api.get('/payments/ngo-donations'); 
+        setDonations(donationRes.data);
+      } catch (error) {
+        console.log("Donations API fetching failed or not ready yet.");
       }
     };
 
@@ -151,7 +160,6 @@ export default function DashboardPage() {
   };
 
   const handleLogout = () => {
-    // Calling Context setter nullifies everything automatically!
     setLoggedInNgo(null);
     navigate('/login');
   };
@@ -191,7 +199,6 @@ export default function DashboardPage() {
             </div>
           </div>
           <div className="flex gap-4">
-            {/* Dynamic Link generation using Context */}
             <button onClick={() => navigate(`/ngo/${loggedInNgo?._id || loggedInNgo?.id}`)} className="px-6 py-2.5 bg-white/10 hover:bg-white/20 text-white rounded-xl font-bold transition-all text-sm border border-white/20 backdrop-blur-sm shadow-lg">
               Public Profile
             </button>
@@ -217,6 +224,10 @@ export default function DashboardPage() {
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
                 Ledgers & Compliance
               </button>
+              <button onClick={() => setActiveTab('donations')} className={`w-full text-left px-5 py-4 rounded-xl font-bold text-sm transition-all flex items-center gap-3 ${activeTab === 'donations' ? 'bg-[#0B2948] text-white shadow-md' : 'text-slate-500 hover:bg-slate-200/50 hover:text-[#0B2948]'}`}>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                Donor Ledger
+              </button>
             </nav>
 
             <div className="mt-12 p-5 bg-blue-50 rounded-2xl border border-blue-100">
@@ -226,7 +237,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Tab Content Area */}
-          <div className="flex-1 p-8 md:p-12">
+          <div className="flex-1 p-8 md:p-12 overflow-hidden">
             
             {/* TAB 1: PROFILE */}
             {activeTab === 'profile' && (
@@ -403,6 +414,43 @@ export default function DashboardPage() {
                   )}
                 </div>
 
+              </div>
+            )}
+
+            {/* TAB 3: DONOR LEDGER */}
+            {activeTab === 'donations' && (
+              <div className="animate-fade-in overflow-x-auto">
+                <div className="mb-10 border-b border-slate-100 pb-6">
+                  <h2 className="text-3xl font-serif font-black text-[#0B2948]">Donor Ledger</h2>
+                  <p className="text-slate-500 mt-2 font-medium">Track incoming capital and supporter details.</p>
+                </div>
+                
+                <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden min-w-[600px]">
+                  <table className="w-full text-left border-collapse whitespace-nowrap">
+                    <thead className="bg-slate-50 border-b border-slate-200 text-[11px] text-slate-500 uppercase tracking-widest font-black">
+                      <tr>
+                        <th className="p-5">Date</th>
+                        <th className="p-5">Donor Name</th>
+                        <th className="p-5">Campaign</th>
+                        <th className="p-5 text-right">Amount (₹)</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {donations.length === 0 ? (
+                        <tr><td colSpan="4" className="p-10 text-center text-slate-400 font-medium text-sm">No donations recorded yet.</td></tr>
+                      ) : (
+                        donations.map((donation, idx) => (
+                          <tr key={idx} className="hover:bg-slate-50 transition-colors">
+                            <td className="p-5 text-sm text-slate-600">{new Date(donation.createdAt).toLocaleDateString()}</td>
+                            <td className="p-5 font-bold text-[#0B2948] text-sm">{donation.donorName || 'Anonymous'}</td>
+                            <td className="p-5 text-sm text-slate-500 truncate max-w-[200px]">{donation.campaignTitle || donation.campaignId}</td>
+                            <td className="p-5 font-black text-[#007A78] text-sm text-right">₹{donation.amount?.toLocaleString('en-IN')}</td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
 

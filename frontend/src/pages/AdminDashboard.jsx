@@ -7,19 +7,26 @@ export default function AdminDashboard() {
   const [ngos, setNgos] = useState([]);
   const [campaigns, setCampaigns] = useState([]);
   const [csrLeads, setCsrLeads] = useState([]);
+  const [donations, setDonations] = useState([]);
   const [loading, setLoading] = useState(true);
+  
+  // Audit Modal State
+  const [auditNgo, setAuditNgo] = useState(null); 
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [ngoRes, campRes, csrRes] = await Promise.all([
+      const [ngoRes, campRes, csrRes, donationRes] = await Promise.all([
         api.get('/admin/ngos'),
         api.get('/admin/campaigns'),
-        api.get('/admin/csr').catch(() => ({ data: [] }))
+        api.get('/admin/csr').catch(() => ({ data: [] })),
+        // THE FIX: Pointing exactly to the new payment route
+        api.get('/payments/all-donations').catch(() => ({ data: [] })) 
       ]);
       setNgos(ngoRes.data);
       setCampaigns(campRes.data);
       setCsrLeads(csrRes.data);
+      setDonations(donationRes.data);
     } catch (error) {
       console.error("Admin fetch error:", error);
     } finally {
@@ -31,14 +38,14 @@ export default function AdminDashboard() {
     fetchData();
   }, []);
 
-  // Upgraded to handle both Approvals and Bans
   const handleToggleStatus = async (id, currentStatus, isBanned) => {
     const actionText = currentStatus === 'pending' ? 'APPROVE and VERIFY' : (isBanned ? 'REINSTATE' : 'SUSPEND');
     
     if (window.confirm(`Are you sure you want to ${actionText} this organization?`)) {
       try {
         await api.put(`/admin/ngo/${id}/status`);
-        fetchData(); // Refresh the table
+        fetchData(); 
+        setAuditNgo(null); // Close modal if open
       } catch (error) {
         alert("Failed to update organization status.");
       }
@@ -65,12 +72,85 @@ export default function AdminDashboard() {
     }
   };
 
-  // Count pending applications for the notification badge
   const pendingNgosCount = ngos.filter(n => n.status === 'pending').length;
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] pb-24 font-sans">
       
+      {/* --- SECURE AUDIT MODAL --- */}
+      {auditNgo && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0B2948]/90 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="bg-white rounded-3xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            
+            <div className="bg-[#0B2948] p-6 text-white flex justify-between items-center shrink-0">
+              <div>
+                <h2 className="text-2xl font-black font-serif tracking-tight">Organization Audit View</h2>
+                <p className="text-blue-200 text-xs font-mono mt-1">INTERNAL ID: {auditNgo._id}</p>
+              </div>
+              <button onClick={() => setAuditNgo(null)} className="text-slate-400 hover:text-white transition-colors">
+                <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+              </button>
+            </div>
+
+            <div className="p-8 overflow-y-auto space-y-8">
+              <div className="grid grid-cols-2 gap-6">
+                <div>
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Entity Name</p>
+                  <p className="text-lg font-black text-[#0B2948]">{auditNgo.name}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Registered Email</p>
+                  <p className="text-lg font-bold text-slate-700">{auditNgo.email}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Registration Date</p>
+                  <p className="text-sm font-bold text-slate-700">{new Date(auditNgo.createdAt).toLocaleDateString()}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Current Status</p>
+                  {auditNgo.status === 'pending' ? <span className="text-amber-600 font-black uppercase text-sm">Pending Verification</span> : auditNgo.isBanned ? <span className="text-red-600 font-black uppercase text-sm">Suspended</span> : <span className="text-emerald-600 font-black uppercase text-sm">Verified</span>}
+                </div>
+              </div>
+
+              <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200 grid grid-cols-2 gap-6">
+                <div>
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Darpan ID</p>
+                  <p className="font-mono text-sm font-bold text-[#0B2948]">{auditNgo.darpanId || 'Not Provided'}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">PAN Number</p>
+                  <p className="font-mono text-sm font-bold text-[#0B2948] uppercase">{auditNgo.panNumber || 'Not Provided'}</p>
+                </div>
+                <div className="col-span-2">
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Headquarters Address</p>
+                  <p className="text-sm font-bold text-slate-700">{auditNgo.address || 'Not Provided'}</p>
+                </div>
+              </div>
+
+              <div>
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Platform Summary</p>
+                <p className="text-sm text-slate-600 leading-relaxed bg-slate-50 p-4 rounded-xl border border-slate-100">{auditNgo.about || 'No description provided by the organization.'}</p>
+              </div>
+            </div>
+
+            <div className="p-6 bg-slate-50 border-t border-slate-200 flex justify-end gap-4 shrink-0">
+              <button onClick={() => setAuditNgo(null)} className="px-6 py-2.5 rounded-xl font-bold text-slate-500 hover:bg-slate-200 transition-colors">Cancel</button>
+              
+              {auditNgo.status === 'pending' ? (
+                <button onClick={() => handleToggleStatus(auditNgo._id, auditNgo.status, auditNgo.isBanned)} className="px-6 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-black uppercase tracking-wider text-sm rounded-xl shadow-lg transition-all">
+                  Approve & Verify Entity
+                </button>
+              ) : (
+                <button onClick={() => handleToggleStatus(auditNgo._id, auditNgo.status, auditNgo.isBanned)} className={`px-6 py-2.5 text-white font-black uppercase tracking-wider text-sm rounded-xl shadow-lg transition-all ${auditNgo.isBanned ? 'bg-amber-500 hover:bg-amber-600' : 'bg-red-500 hover:bg-red-600'}`}>
+                  {auditNgo.isBanned ? 'Reinstate Entity' : 'Suspend Entity'}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+      {/* --------------------------- */}
+
       {/* Professional Admin Header */}
       <div className="bg-[#0B2948] pt-16 pb-24 px-6 text-white border-b-4 border-[#007A78]">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
@@ -81,18 +161,19 @@ export default function AdminDashboard() {
             <h1 className="text-4xl font-serif font-black tracking-tight">Superadmin Console</h1>
             <p className="text-blue-200/80 font-medium mt-2 text-sm">Platform Management & Enterprise Verification</p>
           </div>
-          <div className="flex bg-white/5 p-1.5 rounded-xl border border-white/10 backdrop-blur-sm">
-            <button onClick={() => setActiveTab('ngos')} className={`px-6 py-2.5 rounded-lg font-bold text-sm transition-all flex items-center gap-2 ${activeTab === 'ngos' ? 'bg-[#007A78] text-white shadow-md' : 'text-slate-300 hover:text-white'}`}>
+          <div className="flex flex-wrap bg-white/5 p-1.5 rounded-xl border border-white/10 backdrop-blur-sm gap-1">
+            <button onClick={() => setActiveTab('ngos')} className={`px-5 py-2.5 rounded-lg font-bold text-sm transition-all flex items-center gap-2 ${activeTab === 'ngos' ? 'bg-[#007A78] text-white shadow-md' : 'text-slate-300 hover:text-white'}`}>
               Organizations
-              {pendingNgosCount > 0 && (
-                <span className="bg-amber-500 text-white text-[10px] px-2 py-0.5 rounded-full shadow-sm">{pendingNgosCount}</span>
-              )}
+              {pendingNgosCount > 0 && <span className="bg-amber-500 text-white text-[10px] px-2 py-0.5 rounded-full shadow-sm">{pendingNgosCount}</span>}
             </button>
-            <button onClick={() => setActiveTab('campaigns')} className={`px-6 py-2.5 rounded-lg font-bold text-sm transition-all ${activeTab === 'campaigns' ? 'bg-[#007A78] text-white shadow-md' : 'text-slate-300 hover:text-white'}`}>
+            <button onClick={() => setActiveTab('campaigns')} className={`px-5 py-2.5 rounded-lg font-bold text-sm transition-all ${activeTab === 'campaigns' ? 'bg-[#007A78] text-white shadow-md' : 'text-slate-300 hover:text-white'}`}>
               Campaigns
             </button>
-            <button onClick={() => setActiveTab('csr')} className={`px-6 py-2.5 rounded-lg font-bold text-sm transition-all flex items-center gap-2 ${activeTab === 'csr' ? 'bg-[#007A78] text-white shadow-md' : 'text-slate-300 hover:text-white'}`}>
-              CSR Inquiries
+            <button onClick={() => setActiveTab('donations')} className={`px-5 py-2.5 rounded-lg font-bold text-sm transition-all ${activeTab === 'donations' ? 'bg-[#007A78] text-white shadow-md' : 'text-slate-300 hover:text-white'}`}>
+              Transactions
+            </button>
+            <button onClick={() => setActiveTab('csr')} className={`px-5 py-2.5 rounded-lg font-bold text-sm transition-all ${activeTab === 'csr' ? 'bg-[#007A78] text-white shadow-md' : 'text-slate-300 hover:text-white'}`}>
+              CSR
             </button>
           </div>
         </div>
@@ -105,11 +186,11 @@ export default function AdminDashboard() {
              <p className="text-slate-400 font-bold uppercase tracking-wider text-xs">Connecting to Secure Server...</p>
           </div>
         ) : (
-          <div className="bg-white border border-slate-100 rounded-2xl shadow-xl overflow-hidden">
+          <div className="bg-white border border-slate-100 rounded-2xl shadow-xl overflow-x-auto">
             
             {/* TAB 1: NGOs */}
             {activeTab === 'ngos' && (
-              <table className="w-full text-left border-collapse whitespace-nowrap">
+              <table className="w-full text-left border-collapse whitespace-nowrap min-w-max">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200 text-[11px] text-slate-500 uppercase tracking-widest font-black">
                     <th className="p-5">Registered Entity</th>
@@ -124,14 +205,12 @@ export default function AdminDashboard() {
                       <td className="p-5">
                         <div className="flex items-center gap-2">
                           <p className="font-bold text-[#0B2948] text-sm">{ngo.name}</p>
-                          {/* Show Email Verified Checkmark */}
                           {ngo.isEmailVerified && <svg className="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>}
                         </div>
                         <p className="text-[10px] text-slate-400 font-mono mt-1">ID: {ngo._id}</p>
                       </td>
                       <td className="p-5 text-sm text-slate-600 font-medium">{ngo.email}</td>
                       <td className="p-5">
-                        {/* New Status Pipeline Display */}
                         {ngo.status === 'pending' ? (
                           <span className="bg-amber-100 text-amber-800 border border-amber-200 text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-md shadow-sm animate-pulse">Awaiting Approval</span>
                         ) : ngo.isBanned ? (
@@ -140,19 +219,10 @@ export default function AdminDashboard() {
                           <span className="bg-emerald-100 text-emerald-800 border border-emerald-200 text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-md shadow-sm">Verified Active</span>
                         )}
                       </td>
-                      <td className="p-5 text-right space-x-4">
-                        <Link to={`/ngo/${ngo._id}`} target="_blank" className="text-[#007A78] hover:text-[#0B2948] text-sm font-bold transition-colors">Audit Profile</Link>
-                        
-                        {/* Dynamic Action Button */}
-                        {ngo.status === 'pending' ? (
-                          <button onClick={() => handleToggleStatus(ngo._id, ngo.status, ngo.isBanned)} className="text-xs font-black uppercase tracking-widest px-4 py-1.5 rounded-lg border transition-colors shadow-sm border-emerald-500 text-emerald-600 bg-emerald-50 hover:bg-emerald-100">
-                            Approve
-                          </button>
-                        ) : (
-                          <button onClick={() => handleToggleStatus(ngo._id, ngo.status, ngo.isBanned)} className={`text-xs font-black uppercase tracking-widest px-4 py-1.5 rounded-lg border transition-colors shadow-sm ${ngo.isBanned ? 'border-amber-500 text-amber-600 bg-amber-50 hover:bg-amber-100' : 'border-red-500 text-red-600 bg-red-50 hover:bg-red-100'}`}>
-                            {ngo.isBanned ? 'Reinstate' : 'Suspend'}
-                          </button>
-                        )}
+                      <td className="p-5 text-right">
+                        <button onClick={() => setAuditNgo(ngo)} className="text-[#0B2948] bg-slate-100 hover:bg-slate-200 px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-colors border border-slate-200">
+                          Secure Audit
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -162,7 +232,7 @@ export default function AdminDashboard() {
 
             {/* TAB 2: CAMPAIGNS */}
             {activeTab === 'campaigns' && (
-              <table className="w-full text-left border-collapse whitespace-nowrap">
+              <table className="w-full text-left border-collapse whitespace-nowrap min-w-max">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200 text-[11px] text-slate-500 uppercase tracking-widest font-black">
                     <th className="p-5">Active Ledger</th>
@@ -201,9 +271,41 @@ export default function AdminDashboard() {
               </table>
             )}
 
-            {/* TAB 3: CSR LEADS */}
+            {/* TAB 3: GLOBAL TRANSACTIONS (DONATIONS) */}
+            {activeTab === 'donations' && (
+              <table className="w-full text-left border-collapse whitespace-nowrap min-w-max">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200 text-[11px] text-slate-500 uppercase tracking-widest font-black">
+                    <th className="p-5">Date</th>
+                    <th className="p-5">Donor Name</th>
+                    <th className="p-5">Amount</th>
+                    <th className="p-5">Receiving Campaign ID</th>
+                    <th className="p-5">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {donations.length === 0 ? (
+                    <tr><td colSpan="5" className="p-10 text-center text-slate-400 font-medium text-sm">No transaction data available yet.</td></tr>
+                  ) : (
+                    donations.map((tx, idx) => (
+                      <tr key={idx} className="hover:bg-slate-50 transition-colors">
+                        <td className="p-5 text-sm text-slate-600">{new Date(tx.createdAt).toLocaleDateString()}</td>
+                        <td className="p-5 font-bold text-[#0B2948] text-sm">{tx.donorName || 'Anonymous'}</td>
+                        <td className="p-5 font-black text-[#007A78] text-sm">₹{tx.amount?.toLocaleString('en-IN')}</td>
+                        <td className="p-5 text-[10px] font-mono text-slate-400">{tx.campaignId}</td>
+                        <td className="p-5">
+                          <span className="bg-emerald-100 text-emerald-800 text-[10px] font-black uppercase tracking-wider px-2 py-1 rounded-md">Successful</span>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            )}
+
+            {/* TAB 4: CSR LEADS */}
             {activeTab === 'csr' && (
-              <table className="w-full text-left border-collapse whitespace-nowrap">
+              <table className="w-full text-left border-collapse whitespace-nowrap min-w-max">
                 <thead>
                   <tr className="bg-slate-50 border-b border-slate-200 text-[11px] text-slate-500 uppercase tracking-widest font-black">
                     <th className="p-5">Corporate Entity</th>

@@ -4,7 +4,7 @@ import Donor from '../models/Donor.js';
 import Campaign from '../models/Campaign.js';
 import Ngo from '../models/Ngo.js';
 import { generateAndUpload80GReceipt } from '../utils/pdfGenerator.js';
-import { sendReceiptEmail } from '../utils/emailService.js'; // <-- Added Email Import
+import { sendReceiptEmail } from '../utils/emailService.js'; 
 
 // @desc    Create a Razorpay Order
 // @route   POST /api/payments/order
@@ -57,20 +57,20 @@ export const verifyPayment = async (req, res) => {
       return res.status(404).json({ message: "Campaign not found" });
     }
     
-    const targetNgoId = campaign.ngo || campaign.ngoId; // Smart lookup
+    const targetNgoId = campaign.ngo || campaign.ngoId;
 
     // 3. Save the legitimate donor to the database FIRST
     const newDonor = await Donor.create({
       name: donorInfo.name,
       email: donorInfo.email,
       amount: donorInfo.amount,
-      pan: donorInfo.pan, // <-- Added PAN for legal 80G compliance!
+      pan: donorInfo.pan, 
       paymentId: razorpay_payment_id,
       orderId: razorpay_order_id,
       campaignId: campaignId
     });
 
-    // 4. Increment campaign total (using 'raised', matching your React frontend)
+    // 4. Increment campaign total
     campaign.raised = (campaign.raised || 0) + donorInfo.amount;
     await campaign.save();
 
@@ -80,15 +80,11 @@ export const verifyPayment = async (req, res) => {
       
     if (receivingNgo) {
       try {
-        // Generate the PDF and get the Cloudinary URL back
         receiptUrl = await generateAndUpload80GReceipt(newDonor, receivingNgo);
-        
-        // Save that URL back into the Donor's database record
-        newDonor.taxReceiptUrl = receiptUrl; // or receiptUrl depending on your schema
+        newDonor.taxReceiptUrl = receiptUrl; 
         await newDonor.save();
         console.log(`✅ 80G Receipt Generated and Uploaded: ${receiptUrl}`);
 
-        // FIRE THE EMAIL (Runs in background so user doesn't wait)
         sendReceiptEmail(
           donorInfo.email, 
           donorInfo.name, 
@@ -98,12 +94,10 @@ export const verifyPayment = async (req, res) => {
         );
 
       } catch (pdfOrEmailError) {
-        // This is the golden log! If pdfkit crashes, we will see EXACTLY why right here.
         console.error("⚠️ PDF or Email Engine Failed:", pdfOrEmailError);
       }
     }
 
-    // 6. Send success response back to frontend
     res.status(200).json({ 
       success: true, 
       message: "Payment verified.", 
@@ -115,19 +109,81 @@ export const verifyPayment = async (req, res) => {
     res.status(500).json({ message: "Payment verified but failed to save details." });
   }
 };
-// @desc    Get logged in user's donation history
+
+// @desc    Get logged in user's donation history (For Donor Dashboard)
 // @route   GET /api/payments/my
 export const getMyDonations = async (req, res) => {
   try {
-    // Find all donation records where the user matches the logged-in token
-    // We use .populate() to pull in the Campaign title and image to display on the frontend
     const donations = await Donor.find({ user: req.user._id })
       .populate('campaign', 'title image ngo')
-      .sort({ createdAt: -1 }); // Sort by newest first
+      .sort({ createdAt: -1 }); 
       
     res.json(donations);
   } catch (error) {
     console.error("Fetch My Donations Error:", error);
     res.status(500).json({ message: 'Server error fetching donation history.' });
+  }
+};
+
+// ==================================================================
+// NEW: NGO CREATOR STUDIO LEDGER
+// ==================================================================
+
+// @desc    Get all donations for a specific NGO's campaigns
+// @route   GET /api/payments/ngo-donations
+export const getNgoDonations = async (req, res) => {
+  try {
+    const user = req.user || req.ngo;
+    if (!user) return res.status(401).json({ message: "Not authorized" });
+
+    // 1. Find all campaigns owned by this NGO
+    const campaigns = await Campaign.find({
+      $or: [{ ngo: user._id }, { ngoId: user._id }]
+    });
+    
+    // Map them to strings for a safe database search
+    const campaignIds = campaigns.map(c => c._id.toString());
+
+    // 2. Find all donors who donated to any of these campaign IDs
+    const donations = await Donor.find({ campaignId: { $in: campaignIds } })
+      .sort({ createdAt: -1 });
+
+    // 3. Attach the readable campaign title and format the donor name for the frontend
+    const enrichedDonations = donations.map(donor => {
+      const camp = campaigns.find(c => c._id.toString() === String(donor.campaignId));
+      return {
+        ...donor.toObject(),
+        campaignTitle: camp ? camp.title : 'Unknown Project',
+        donorName: donor.name || 'Anonymous'
+      };
+    });
+
+    res.json(enrichedDonations);
+  } catch (error) {
+    console.error("Fetch NGO Donations Error:", error);
+    res.status(500).json({ message: 'Server error fetching NGO ledger.' });
+  }
+};
+
+// ==================================================================
+// NEW: ADMIN GLOBAL LEDGER
+// ==================================================================
+
+// @desc    Get ALL donations across the platform
+// @route   GET /api/payments/all-donations
+export const getAllDonations = async (req, res) => {
+  try {
+    const donations = await Donor.find({}).sort({ createdAt: -1 });
+    
+    // Format the donor name for the frontend table
+    const enrichedDonations = donations.map(donor => ({
+      ...donor.toObject(),
+      donorName: donor.name || 'Anonymous'
+    }));
+
+    res.json(enrichedDonations);
+  } catch (error) {
+    console.error("Fetch All Donations Error:", error);
+    res.status(500).json({ message: 'Server error fetching global donations.' });
   }
 };
