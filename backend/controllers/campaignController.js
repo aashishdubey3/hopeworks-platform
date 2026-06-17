@@ -32,7 +32,6 @@ export const getCampaignById = async (req, res) => {
 // @route   POST /api/campaigns
 export const createCampaign = async (req, res) => {
   try {
-    // 1. Pull the text fields from the frontend FormData
     const { title, description, goal, cause } = req.body;
     const user = req.user || req.ngo;
 
@@ -40,27 +39,22 @@ export const createCampaign = async (req, res) => {
       return res.status(401).json({ message: 'Not authorized to create campaign' });
     }
 
-    // 2. Pull the secure Cloudinary URL provided by Multer
+    // THE FIX: Safely grab the ID regardless of how the token formatted it
+    const userId = user._id || user.id;
+
     const uploadedImage = req.file ? req.file.path : null;
 
-    // 3. Save to database using the EXACT keys your Schema expects!
     const campaign = await Campaign.create({
       title,
       description,
       cause,
-      
-      // FIX: Mapping to the strict schema names that caused the crash
       goalAmount: goal,      
       imageUrl: uploadedImage, 
-      
-      // Keeping the shorter names just in case your frontend relies on them
-      goal: goal,             
+      goal: goal,            
       image: uploadedImage,   
-      
-      ngo: user._id, 
-      ngoId: user._id, 
+      ngo: userId, 
+      ngoId: userId, 
       host: user.name || "Verified NGO", 
-      
       raisedAmount: 0, 
       raised: 0
     });
@@ -77,11 +71,12 @@ export const createCampaign = async (req, res) => {
 export const getMyCampaigns = async (req, res) => {
   try {
     const user = req.user || req.ngo;
+    const userId = user._id || user.id; // THE FIX
     
     const campaigns = await Campaign.find({
       $or: [
-        { ngo: user._id },
-        { ngoId: user._id }
+        { ngo: userId },
+        { ngoId: userId }
       ]
     }).sort({ createdAt: -1 });
 
@@ -106,6 +101,7 @@ export const getCampaignsByNgoId = async (req, res) => {
     res.status(500).json({ message: "Server error fetching NGO campaigns" });
   }
 };
+
 // @desc    Update an existing campaign
 // @route   PUT /api/campaigns/:id
 export const updateCampaign = async (req, res) => {
@@ -117,16 +113,16 @@ export const updateCampaign = async (req, res) => {
       return res.status(404).json({ message: 'Campaign not found' });
     }
 
-    // BULLETPROOF OWNERSHIP CHECK (Prevents the 500 Crash)
+    // THE FIX: Bulletproof ownership check
     const campaignOwnerId = campaign.ngo || campaign.ngoId;
+    const userId = user._id || user.id; 
     
-    if (!campaignOwnerId || String(campaignOwnerId) !== String(user._id)) {
+    if (!campaignOwnerId || String(campaignOwnerId) !== String(userId)) {
       return res.status(401).json({ message: 'Not authorized to edit this campaign' });
     }
 
     const { title, description, goal, cause } = req.body;
 
-    // Update text fields if they exist
     if (title) campaign.title = title;
     if (description) campaign.description = description;
     if (cause) campaign.cause = cause;
@@ -135,7 +131,6 @@ export const updateCampaign = async (req, res) => {
       campaign.goal = goal;
     }
 
-    // Update image ONLY if a new one was uploaded
     if (req.file) {
       campaign.imageUrl = req.file.path;
       campaign.image = req.file.path;
@@ -160,16 +155,14 @@ export const deleteCampaign = async (req, res) => {
       return res.status(404).json({ message: 'Campaign not found' });
     }
 
-    // BULLETPROOF OWNERSHIP CHECK (Safely handles old or missing data)
+    // THE FIX: Bulletproof ownership check
     const campaignOwnerId = campaign.ngo || campaign.ngoId;
+    const userId = user._id || user.id;
     
-    // If there is no owner ID, or if the ID doesn't match the logged-in user, reject it.
-    // Using String() prevents the app from crashing if the data is undefined.
-    if (!campaignOwnerId || String(campaignOwnerId) !== String(user._id)) {
+    if (!campaignOwnerId || String(campaignOwnerId) !== String(userId)) {
       return res.status(401).json({ message: 'Not authorized to delete this campaign' });
     }
 
-    // THE FINANCIAL COMPLIANCE LOCK
     const raised = campaign.raisedAmount || campaign.raised || 0;
     if (raised > 1) {
       return res.status(403).json({ 
@@ -177,7 +170,6 @@ export const deleteCampaign = async (req, res) => {
       });
     }
 
-    // Use deleteOne() instead of the deprecated remove()
     await campaign.deleteOne();
     res.json({ message: 'Campaign deleted successfully' });
   } catch (error) {
