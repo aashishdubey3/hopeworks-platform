@@ -7,7 +7,18 @@ export default function CsrPage() {
   });
   const [status, setStatus] = useState({ loading: false, message: '', type: '' });
 
-  const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    
+    // If the user is typing in the phone field, force it to be numbers only, max 10 digits.
+    if (name === 'phone') {
+      const onlyNumbers = value.replace(/\D/g, '').slice(0, 10);
+      setFormData({ ...formData, [name]: onlyNumbers });
+    } else {
+      // For all other fields, behave normally
+      setFormData({ ...formData, [name]: value });
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -45,7 +56,6 @@ export default function CsrPage() {
       </section>
 
       {/* 2. MAIN CONTENT & FORM */}
-      {/* THE CSS FIX: Removed the negative margin (-mt-24) so it sits cleanly below the dark background */}
       <section className="max-w-6xl mx-auto px-6 pt-16 relative z-20 grid lg:grid-cols-5 gap-16 items-start">
         
         {/* Left Column: Features */}
@@ -116,7 +126,7 @@ export default function CsrPage() {
               </div>
               <div>
                 <label className="block text-sm font-bold text-[#0B2948] mb-2">Direct Phone <span className="text-red-500">*</span></label>
-                <input type="tel" name="phone" value={formData.phone} onChange={handleChange} required disabled={status.loading} className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#007A78] transition-all font-medium disabled:opacity-50" placeholder="+91 98765 43210" />
+                <input type="tel" name="phone" value={formData.phone} onChange={handleChange} required disabled={status.loading} maxLength="10" className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#007A78] transition-all font-medium disabled:opacity-50" placeholder="9876543210" />
               </div>
             </div>
 
