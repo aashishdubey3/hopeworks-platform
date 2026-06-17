@@ -1,62 +1,26 @@
 import nodemailer from 'nodemailer';
-import { google } from 'googleapis';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
-// Initialize the Google OAuth2 Client
-const OAuth2 = google.auth.OAuth2;
-
-const createTransporter = async () => {
-  try {
-    const oauth2Client = new OAuth2(
-      process.env.GMAIL_CLIENT_ID,
-      process.env.GMAIL_CLIENT_SECRET,
-      "https://developers.google.com/oauthplayground"
-    );
-
-    oauth2Client.setCredentials({
-      refresh_token: process.env.GMAIL_REFRESH_TOKEN,
-    });
-
-    const accessToken = await new Promise((resolve, reject) => {
-      oauth2Client.getAccessToken((err, token) => {
-        if (err) {
-          console.error("❌ Google OAuth Token Error:", err);
-          reject("Failed to create access token");
-        }
-        resolve(token);
-      });
-    });
-
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        type: "OAuth2",
-        user: process.env.GMAIL_USER,
-        accessToken,
-        clientId: process.env.GMAIL_CLIENT_ID,
-        clientSecret: process.env.GMAIL_CLIENT_SECRET,
-        refreshToken: process.env.GMAIL_REFRESH_TOKEN,
-      },
-    });
-
-    return transporter;
-  } catch (err) {
-    console.error("❌ Error creating email transporter:", err);
-    return null;
-  }
+// THE FIX: Instant, cached transporter. No manual Google API token fetching!
+const createTransporter = () => {
+  return nodemailer.createTransport({
+    service: "gmail",
+    auth: {
+      type: "OAuth2",
+      user: process.env.GMAIL_USER,
+      clientId: process.env.GMAIL_CLIENT_ID,
+      clientSecret: process.env.GMAIL_CLIENT_SECRET,
+      refreshToken: process.env.GMAIL_REFRESH_TOKEN,
+    },
+  });
 };
 
-// 1. Existing function for Donations
 export const sendReceiptEmail = async (donorEmail, donorName, ngoName, amount, receiptUrl) => {
   try {
-    const emailTransporter = await createTransporter();
+    const emailTransporter = createTransporter();
     
-    if (!emailTransporter) {
-      throw new Error("Transporter creation failed. Check your .env Google credentials.");
-    }
-
     const mailOptions = {
       from: `HopeWorks Platform <${process.env.GMAIL_USER}>`,
       to: donorEmail,
@@ -86,20 +50,14 @@ export const sendReceiptEmail = async (donorEmail, donorName, ngoName, amount, r
 
     await emailTransporter.sendMail(mailOptions);
     console.log(`✅ Automated receipt sent to: ${donorEmail}`);
-    
   } catch (error) {
     console.error("❌ Gmail API Error:", error);
   }
 };
 
-// ==========================================
-// 2. NEW: Generic function for OTPs & Passwords
-// ==========================================
 export const sendEmail = async ({ email, subject, message }) => {
   try {
-    const emailTransporter = await createTransporter();
-    if (!emailTransporter) throw new Error("Transporter creation failed.");
-
+    const emailTransporter = createTransporter();
     const formattedMessage = message.replace(/\n/g, '<br/>');
 
     const mailOptions = {
