@@ -10,8 +10,8 @@ import {
 } from '../controllers/campaignController.js'; 
 
 // Ensure these match your actual folder name EXACTLY
-import upload from '../Middleware/uploadMiddleware.js';
-import { protect } from '../Middleware/authMiddleware.js';
+import upload from '../middleware/uploadMiddleware.js';
+import { protect } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 

@@ -10,7 +10,7 @@ import {
 } from '../controllers/ngoController.js';
 import { exportForm10BD } from '../controllers/exportController.js';
 import { protect } from '../middleware/authMiddleware.js';
-import upload from '../Middleware/uploadMiddleware.js'; // <-- NEW: Imported Multer!
+import upload from '../middleware/uploadMiddleware.js'; // <-- NEW: Imported Multer!
 
 const router = express.Router();
 
