@@ -20,7 +20,7 @@ import NgoDirectoryPage from './pages/NgoDirectoryPage';
 import NgoProfilePage from './pages/NgoProfilePage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import VerifyEmailPage from './pages/VerifyEmailPage';
-
+import EditCampaign from './pages/EditCampaign';
 function App() {
   return (
     <AuthProvider>
@@ -48,6 +48,7 @@ function App() {
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
             <Route path="/verify-email-page" element={<VerifyEmailPage />} />
+            <Route path="/campaigns/edit/:id" element={<EditCampaign />} />
           </Routes>
         </Layout>
       </Router>
