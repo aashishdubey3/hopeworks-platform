@@ -98,7 +98,7 @@ export const forgotPassword = async (req, res) => {
     await ngo.save();
 
     // Replace localhost with your actual live Vercel domain
-const resetUrl = `https://hopeworks-frontend.vercel.app/reset-password/${resetToken}`;
+const resetUrl = `https://hopeworks-platform.vercel.app/reset-password/${resetToken}`;
     const message = `You requested a password reset. Please click this link to set a new password: \n\n ${resetUrl} \n\n This link expires in 15 minutes.`;
 
     // THE FIX: Fire and forget! Instant response for the user.
