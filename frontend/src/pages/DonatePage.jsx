@@ -5,7 +5,6 @@ import Button from '../components/Button';
 import api from '../utils/api';
 
 export default function DonatePage() {
-  // THE FIX: Pull 'id' from the URL to match App.jsx route
   const { id } = useParams();  
   
   const [formData, setFormData] = useState({ name: '', email: '', amount: '1000', pan: '' });
@@ -36,6 +35,12 @@ export default function DonatePage() {
       formData.pan = panValue; 
     }
 
+    // THE AD-BLOCKER SHIELD: Check if Razorpay loaded before proceeding
+    if (typeof window.Razorpay === 'undefined') {
+      setError('Payment gateway blocked. Please temporarily disable your ad-blocker or Brave Shields and refresh the page.');
+      return;
+    }
+
     setError('');
     setStep(2);
 
@@ -55,10 +60,7 @@ export default function DonatePage() {
               razorpay_order_id: response.razorpay_order_id,
               razorpay_payment_id: response.razorpay_payment_id,
               razorpay_signature: response.razorpay_signature,
-              
-              // THE FIX: Pass the 'id' variable we pulled from the URL
               campaignId: id, 
-              
               donorInfo: {
                 name: formData.name,
                 email: formData.email,
@@ -78,19 +80,26 @@ export default function DonatePage() {
           }
         },
         prefill: { name: formData.name, email: formData.email },
-        theme: { color: "#1C2331" }
+        theme: { color: "#1C2331" },
+        // THE DISMISS HANDLER: Reverts to form if user closes the popup
+        modal: {
+          ondismiss: function () {
+            setError('Payment was cancelled.');
+            setStep(1);
+          }
+        }
       };
 
       const rzp = new window.Razorpay(options);
       rzp.on('payment.failed', function () {
-        setError('Payment transaction failed or was cancelled.');
+        setError('Payment transaction failed or was declined by the bank.');
         setStep(1);
       });
       rzp.open();
 
     } catch (err) {
       console.error(err);
-      setError('Could not initialize payment gateway.');
+      setError('Could not initialize payment gateway. The server may be busy.');
       setStep(1);
     }
   };
@@ -104,7 +113,7 @@ export default function DonatePage() {
             <p className="text-gray-600 mt-2">Secure payment. Automated 80G Tax Receipt.</p>
           </div>
 
-          {error && <div className="p-3 bg-red-50 text-red-700 border border-red-200 text-sm rounded-sm">{error}</div>}
+          {error && <div className="p-3 bg-red-50 text-red-700 border border-red-200 text-sm rounded-sm font-bold flex items-center gap-2"><svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>{error}</div>}
 
           <FormInput label="Full Legal Name (For 80G Receipt)" name="name" value={formData.name} onChange={handleChange} required />
           <FormInput label="Email Address" type="email" name="email" value={formData.email} onChange={handleChange} required />
@@ -141,6 +150,9 @@ export default function DonatePage() {
         <div className="text-center py-12 animate-fade-in">
           <h3 className="text-2xl font-bold text-[#1C2331] animate-pulse">Awaiting Secure Checkout...</h3>
           <p className="text-gray-500 mt-4">Please complete the Razorpay popup to finalize your donation.</p>
+          <button onClick={() => setStep(1)} className="mt-8 text-sm text-[#007A78] hover:underline font-bold">
+            Cancel and return
+          </button>
         </div>
       )}
 
@@ -151,7 +163,7 @@ export default function DonatePage() {
           <p className="text-gray-600 mb-8">Thank you for your transparent donation. Your funds are being deployed.</p>
           
           {receiptUrl ? (
-            <a href={receiptUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center px-6 py-3 text-sm font-medium tracking-wide text-white bg-[#007A78] hover:bg-[#005A58] rounded-sm transition-colors w-full">
+            <a href={receiptUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center px-6 py-3 text-sm font-medium tracking-wide text-white bg-[#007A78] hover:bg-[#005A58] rounded-sm transition-colors w-full shadow-lg hover:-translate-y-0.5 transform">
               Download Donation Receipt (PDF)
             </a>
           ) : (
