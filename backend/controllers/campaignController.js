@@ -158,8 +158,12 @@ export const deleteCampaign = async (req, res) => {
       return res.status(404).json({ message: 'Campaign not found' });
     }
 
-    // Security: Only the NGO who created it can delete it
-    if (campaign.ngo.toString() !== user._id.toString() && campaign.ngoId.toString() !== user._id.toString()) {
+    // BULLETPROOF OWNERSHIP CHECK (Safely handles old or missing data)
+    const campaignOwnerId = campaign.ngo || campaign.ngoId;
+    
+    // If there is no owner ID, or if the ID doesn't match the logged-in user, reject it.
+    // Using String() prevents the app from crashing if the data is undefined.
+    if (!campaignOwnerId || String(campaignOwnerId) !== String(user._id)) {
       return res.status(401).json({ message: 'Not authorized to delete this campaign' });
     }
 
@@ -171,10 +175,11 @@ export const deleteCampaign = async (req, res) => {
       });
     }
 
+    // Use deleteOne() instead of the deprecated remove()
     await campaign.deleteOne();
     res.json({ message: 'Campaign deleted successfully' });
   } catch (error) {
     console.error("Delete Campaign Error:", error);
-    res.status(500).json({ message: 'Server error deleting campaign.' });
+    res.status(500).json({ message: 'Server error deleting campaign.', error: error.message });
   }
 };
