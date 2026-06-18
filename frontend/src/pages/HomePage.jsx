@@ -59,9 +59,8 @@ export default function HomePage() {
         `}
       </style>
 
-      {/* 1. HERO SECTION (Now using your rich, optimistic Trust Blue: #0B2948) */}
+      {/* 1. HERO SECTION */}
       <section className="relative bg-gradient-to-br from-[#0B2948] to-[#06182C] text-white py-24 md:py-28 px-6 text-center overflow-hidden">
-        {/* Lighter, warmer accent orbs */}
         <div className="absolute top-0 left-1/4 w-72 h-72 bg-[#00E5FF] rounded-full mix-blend-screen filter blur-[100px] opacity-20 animate-pulse"></div>
         <div className="absolute bottom-0 right-1/4 w-72 h-72 bg-[#007A78] rounded-full mix-blend-screen filter blur-[100px] opacity-30 animate-pulse" style={{ animationDelay: '2s' }}></div>
 
@@ -84,11 +83,24 @@ export default function HomePage() {
               placeholder="Search causes or organizations..." 
               className="flex-1 bg-transparent border-none text-white text-sm placeholder-blue-200/50 focus:ring-0 outline-none" 
             />
-            {/* Button changed to the HopeWorks Teal */}
             <button type="submit" className="px-6 py-2.5 bg-[#007A78] text-white text-sm font-bold rounded-full hover:bg-[#00605F] transition-colors shadow-lg transform hover:scale-105 duration-200">
               Search
             </button>
           </form>
+
+          {/* THE NEW FEATURE: Location Based "Near Me" Button */}
+          <div className="mt-6">
+            <button 
+              onClick={() => navigate('/ngos?nearMe=true')} 
+              className="flex items-center gap-2 px-6 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 text-white text-sm font-bold rounded-full transition-all backdrop-blur-md transform hover:-translate-y-0.5"
+            >
+              <svg className="w-4 h-4 text-[#00E5FF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+              </svg>
+              Locate NGOs Near Me
+            </button>
+          </div>
         </div>
       </section>
 
@@ -171,7 +183,6 @@ export default function HomePage() {
                             <div className="absolute top-0 right-0 bottom-0 left-0 bg-white/20 animate-pulse"></div>
                           </div>
                         </div>
-                        {/* Changed card button from black to Trust Blue */}
                         <button className="w-full bg-[#0B2948] text-white text-sm font-bold py-2.5 rounded-lg shadow-sm hover:bg-[#007A78] transition-colors">
                           Fund this project
                         </button>
@@ -185,9 +196,8 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* 4. THE OPTIMISTIC CTA BAR - Mirroring the Hero Section! */}
+      {/* 4. THE OPTIMISTIC CTA BAR */}
       <section className="relative bg-gradient-to-br from-[#0B2948] to-[#06182C] overflow-hidden mt-8 border-t border-[#00E5FF]/20 shadow-2xl">
-        {/* Matching Hero Orbs to keep the branding consistent */}
         <div className="absolute top-[-50%] left-[-10%] w-96 h-96 bg-[#00E5FF] opacity-20 rounded-full blur-[100px]"></div>
         <div className="absolute bottom-[-50%] right-[-10%] w-96 h-96 bg-[#007A78] opacity-30 rounded-full blur-[100px]"></div>
 
@@ -199,14 +209,12 @@ export default function HomePage() {
             <p className="text-blue-100/80 mb-8 text-lg font-light leading-relaxed max-w-2xl">
               Join our network today. Start amplifying your impact and building absolute trust within the philanthropic ecosystem.
             </p>
-            {/* Button matching the exact green/teal of the Search button */}
             <Link to="/auth" className="bg-[#007A78] hover:bg-[#00E5FF] hover:text-[#0B2948] text-white font-black py-3.5 px-10 rounded-full transition-all duration-300 shadow-[0_0_15px_rgba(0,122,120,0.4)] hover:shadow-[0_0_25px_rgba(0,229,255,0.6)] transform hover:-translate-y-1 text-sm uppercase tracking-wider">
               Get Started Now
             </Link>
           </div>
         </div>
       </section>
-
     </div>
   );
 }

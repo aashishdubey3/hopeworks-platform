@@ -48,6 +48,14 @@ export default function NgoDirectoryPage() {
     fetchNgos();
     setSearchTerm(initialSearch); 
   }, [initialSearch]);
+  // Add this right below your existing useEffect!
+  useEffect(() => {
+    // If the URL has ?nearMe=true AND the NGOs are fully loaded...
+    if (!loading && ngos.length > 0 && searchParams.get('nearMe') === 'true') {
+      handleNearMeClick(); // Auto-trigger the GPS!
+      setSearchParams({}); // Clear the URL so it doesn't loop
+    }
+  }, [loading, ngos.length, searchParams]);
 
   const handleSearch = (e) => {
     e.preventDefault();
