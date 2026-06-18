@@ -20,7 +20,6 @@ export default function DonatePage() {
   
   const [formData, setFormData] = useState({ name: '', email: '', amount: '1000', pan: '' });
   const [step, setStep] = useState(1); 
-  const [receiptUrl, setReceiptUrl] = useState('');
   const [error, setError] = useState('');
 
   // Pre-load the script in the background as soon as the page opens
@@ -88,7 +87,6 @@ export default function DonatePage() {
             });
 
             if (verifyRes.data.success) {
-              setReceiptUrl(verifyRes.data.receiptUrl);
               setStep(3); 
             }
           } catch (err) {
@@ -98,7 +96,7 @@ export default function DonatePage() {
           }
         },
         prefill: { name: formData.name, email: formData.email },
-        theme: { color: "#1C2331" },
+        theme: { color: "#0B2948" },
         modal: {
           ondismiss: function () {
             setError('Payment was cancelled.');
@@ -122,23 +120,23 @@ export default function DonatePage() {
   };
 
   return (
-    <div className="max-w-lg mx-auto bg-white p-8 border border-gray-200 rounded-sm shadow-sm mt-10">
+    <div className="max-w-lg mx-auto bg-white p-8 border border-slate-200 rounded-3xl shadow-xl mt-16 mb-24">
       {step === 1 && (
         <form onSubmit={handlePayment} className="space-y-6 animate-fade-in">
           <div className="text-center mb-8">
-            <h2 className="font-serif text-3xl font-bold text-[#1C2331]">Make an Impact</h2>
-            <p className="text-gray-600 mt-2">Secure payment. Automated 80G Tax Receipt.</p>
+            <h2 className="font-serif text-3xl font-black text-[#0B2948]">Make an Impact</h2>
+            <p className="text-slate-500 mt-2 font-medium">Secure payment. Automated 80G Tax Receipt.</p>
           </div>
 
-          {error && <div className="p-3 bg-red-50 text-red-700 border border-red-200 text-sm rounded-sm font-bold flex items-center gap-2"><svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>{error}</div>}
+          {error && <div className="p-4 bg-red-50 text-red-700 border border-red-200 text-sm rounded-xl font-bold flex items-center gap-3"><svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>{error}</div>}
 
           <FormInput label="Full Legal Name (For 80G Receipt)" name="name" value={formData.name} onChange={handleChange} required />
           <FormInput label="Email Address" type="email" name="email" value={formData.email} onChange={handleChange} required />
           <FormInput label="Donation Amount (₹)" type="number" name="amount" value={formData.amount} onChange={handleChange} required min="1" />
           
           {isHighValue && (
-            <div className="p-4 bg-blue-50 border border-blue-100 rounded-sm animate-fade-in">
-              <label className="block text-sm font-semibold text-[#1C2331] mb-2">
+            <div className="p-5 bg-[#E6F2F2] border border-[#007A78]/20 rounded-2xl animate-fade-in">
+              <label className="block text-sm font-black text-[#0B2948] mb-2">
                 Permanent Account Number (PAN) <span className="text-red-500">*</span>
               </label>
               <input 
@@ -146,46 +144,56 @@ export default function DonatePage() {
                 name="pan" 
                 value={formData.pan} 
                 onChange={handleChange} 
-                className="w-full px-4 py-2 border border-gray-300 focus:outline-none focus:border-[#007A78] uppercase font-mono"
+                className="w-full px-5 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#007A78] uppercase font-mono bg-white shadow-sm"
                 placeholder="ABCDE1234F"
                 required={isHighValue}
                 maxLength="10"
               />
-              <p className="text-xs text-blue-700 mt-2">
+              <p className="text-xs text-slate-600 font-medium mt-3 leading-relaxed">
                 As per Indian IT regulations, PAN is mandatory for donations exceeding ₹10,000 to claim an 80G deduction.
               </p>
             </div>
           )}
 
-          <Button type="submit" variant="primary" className="w-full text-lg py-4 mt-4">
-            Proceed to Payment
-          </Button>
+          <button type="submit" className="w-full bg-[#0B2948] hover:bg-[#007A78] text-white font-black text-lg py-4 rounded-xl transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-1 mt-4">
+            Proceed to Secure Payment
+          </button>
         </form>
       )}
 
       {step === 2 && (
         <div className="text-center py-12 animate-fade-in">
-          <h3 className="text-2xl font-bold text-[#1C2331] animate-pulse">Awaiting Secure Checkout...</h3>
-          <p className="text-gray-500 mt-4">Please complete the Razorpay popup to finalize your donation.</p>
-          <button onClick={() => setStep(1)} className="mt-8 text-sm text-[#007A78] hover:underline font-bold">
+          <div className="w-16 h-16 border-4 border-[#0B2948] border-t-transparent rounded-full animate-spin mx-auto mb-6"></div>
+          <h3 className="text-2xl font-black text-[#0B2948] animate-pulse font-serif">Awaiting Secure Checkout...</h3>
+          <p className="text-slate-500 font-medium mt-4">Please complete the Razorpay popup to finalize your donation.</p>
+          <button onClick={() => setStep(1)} className="mt-8 text-sm text-[#007A78] hover:text-[#0B2948] font-bold transition-colors">
             Cancel and return
           </button>
         </div>
       )}
 
+      {/* THE FIX: Updated Success Screen for the "Fire-and-Forget" Backend */}
       {step === 3 && (
         <div className="text-center py-8 animate-fade-in">
-          <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-6 text-3xl">✓</div>
-          <h2 className="font-serif text-3xl font-bold text-[#1C2331] mb-2">Payment Successful!</h2>
-          <p className="text-gray-600 mb-8">Thank you for your transparent donation. Your funds are being deployed.</p>
+          <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6 text-4xl shadow-sm border border-emerald-200">
+            ✓
+          </div>
+          <h2 className="font-serif text-3xl font-black text-[#0B2948] mb-3">Payment Successful!</h2>
+          <p className="text-slate-600 font-medium mb-8 text-sm">Thank you for your transparent donation. Your funds have been secured.</p>
           
-          {receiptUrl ? (
-            <a href={receiptUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center px-6 py-3 text-sm font-medium tracking-wide text-white bg-[#007A78] hover:bg-[#005A58] rounded-sm transition-colors w-full shadow-lg hover:-translate-y-0.5 transform">
-              Download Donation Receipt (PDF)
-            </a>
-          ) : (
-            <p className="text-sm text-gray-500 italic animate-pulse">Your receipt is being generated...</p>
-          )}
+          <div className="bg-[#E6F2F2] border border-[#007A78]/20 p-6 rounded-2xl mb-10 text-left flex gap-4 shadow-sm">
+            <svg className="w-6 h-6 text-[#007A78] shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+            <div>
+              <h4 className="font-black text-[#0B2948] text-sm tracking-wide">Official 80G Receipt Emailed</h4>
+              <p className="text-xs text-slate-600 font-medium mt-1.5 leading-relaxed">
+                To ensure a lightning-fast checkout, your tax receipt is being processed securely in the background. It will arrive in your inbox (<span className="font-bold text-[#007A78]">{formData.email}</span>) momentarily.
+              </p>
+            </div>
+          </div>
+
+          <button onClick={() => window.location.href = `/campaign/${id}`} className="w-full bg-[#0B2948] hover:bg-[#007A78] text-white font-black text-sm uppercase tracking-wider py-4 rounded-xl transition-all shadow-md transform hover:-translate-y-1">
+            Return to Project Ledger
+          </button>
         </div>
       )}
     </div>
