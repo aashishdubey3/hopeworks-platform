@@ -2,6 +2,20 @@ import { useState, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import api from '../utils/api';
 
+// --- THE MATH: Calculates distance between two GPS coordinates in kilometers ---
+const calculateDistance = (lat1, lon1, lat2, lon2) => {
+  if (!lat1 || !lon1 || !lat2 || !lon2) return Infinity; // Put missing coordinates at the bottom
+  
+  const R = 6371; // Earth's radius in km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = 
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c; 
+};
+
 export default function NgoDirectoryPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const initialSearch = searchParams.get('search') || '';
@@ -9,6 +23,9 @@ export default function NgoDirectoryPage() {
   const [ngos, setNgos] = useState([]);
   const [searchTerm, setSearchTerm] = useState(initialSearch);
   const [loading, setLoading] = useState(true);
+  
+  // New State for the GPS feature
+  const [isLocating, setIsLocating] = useState(false);
 
   const getImageUrl = (path) => {
     if (!path) return null;
@@ -29,7 +46,6 @@ export default function NgoDirectoryPage() {
       }
     };
     fetchNgos();
-    // Sync the input box if the URL changes externally
     setSearchTerm(initialSearch); 
   }, [initialSearch]);
 
@@ -38,10 +54,42 @@ export default function NgoDirectoryPage() {
     setSearchParams(searchTerm ? { search: searchTerm } : {});
   };
 
+  // --- THE FEATURE: Geolocation Sorting Logic ---
+  const handleNearMeClick = () => {
+    if (!navigator.geolocation) {
+      alert("Geolocation is not supported by your browser");
+      return;
+    }
+
+    setIsLocating(true);
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const userLat = position.coords.latitude;
+        const userLng = position.coords.longitude;
+
+        const sortedNgos = [...ngos]
+          .map(ngo => {
+            const distance = calculateDistance(userLat, userLng, ngo.latitude, ngo.longitude);
+            return { ...ngo, distance };
+          })
+          .sort((a, b) => a.distance - b.distance);
+
+        setNgos(sortedNgos);
+        setIsLocating(false);
+      },
+      (error) => {
+        console.error("Error getting location", error);
+        alert("Please allow location access to find NGOs near you.");
+        setIsLocating(false);
+      }
+    );
+  };
+
   return (
     <div className="min-h-screen bg-[#F8FAFC] font-sans pb-24">
       
-      {/* 1. PREMIUM SLIM HEADER - Using the Live Green/Teal accent! */}
+      {/* 1. PREMIUM SLIM HEADER */}
       <div className="bg-[#0B2948] border-b-2 border-[#007A78] sticky top-20 z-30 shadow-lg">
         <div className="max-w-7xl mx-auto px-6 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
           <div>
@@ -49,19 +97,34 @@ export default function NgoDirectoryPage() {
             <p className="text-blue-200/80 font-medium text-xs mt-0.5 tracking-wide">Discover and fund verified organizations making a real impact.</p>
           </div>
           
-          <form onSubmit={handleSearch} className="relative w-full md:w-[450px]">
-            <svg className="absolute left-4 top-3 w-4 h-4 text-blue-300/70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-            <input 
-              type="text" 
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search by name, cause, or location..." 
-              className="w-full pl-10 pr-24 py-2.5 bg-white/10 border border-white/20 rounded-xl focus:bg-white/20 focus:border-[#00E5FF] focus:outline-none focus:ring-1 focus:ring-[#00E5FF] transition-all text-sm font-medium text-white placeholder-blue-200/50"
-            />
-            <button type="submit" className="absolute right-1.5 top-1.5 bottom-1.5 bg-[#007A78] hover:bg-[#00E5FF] text-white hover:text-[#0B2948] px-4 rounded-lg text-xs font-black transition-all shadow-sm tracking-wider uppercase">
-              Search
+          <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+            <form onSubmit={handleSearch} className="relative w-full sm:w-[350px]">
+              <svg className="absolute left-4 top-3 w-4 h-4 text-blue-300/70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+              <input 
+                type="text" 
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search by name, cause..." 
+                className="w-full pl-10 pr-24 py-2.5 bg-white/10 border border-white/20 rounded-xl focus:bg-white/20 focus:border-[#00E5FF] focus:outline-none focus:ring-1 focus:ring-[#00E5FF] transition-all text-sm font-medium text-white placeholder-blue-200/50"
+              />
+              <button type="submit" className="absolute right-1.5 top-1.5 bottom-1.5 bg-[#007A78] hover:bg-[#00E5FF] text-white hover:text-[#0B2948] px-4 rounded-lg text-xs font-black transition-all shadow-sm tracking-wider uppercase">
+                Search
+              </button>
+            </form>
+
+            {/* THE NEW BUTTON: NGOs Near Me */}
+            <button 
+              onClick={handleNearMeClick} 
+              disabled={isLocating}
+              className="flex items-center justify-center gap-2 bg-[#00E5FF] hover:bg-[#007A78] text-[#0B2948] hover:text-white px-5 py-2.5 rounded-xl font-black transition-all shadow-md disabled:opacity-50 text-xs tracking-wider uppercase w-full sm:w-auto shrink-0"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+              </svg>
+              {isLocating ? 'Locating...' : 'Near Me'}
             </button>
-          </form>
+          </div>
         </div>
       </div>
 
@@ -77,9 +140,9 @@ export default function NgoDirectoryPage() {
               <svg className="w-8 h-8 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7"></path></svg>
             </div>
             <h3 className="text-2xl font-black text-[#0B2948] mb-3 font-serif">No organizations found.</h3>
-            <p className="text-slate-500 mb-8 text-sm">We couldn't find any verified NGOs matching "{initialSearch}". Try adjusting your search terms.</p>
-            <button onClick={() => { setSearchTerm(''); setSearchParams({}); }} className="px-6 py-2.5 bg-[#0B2948] text-white font-bold rounded-xl hover:bg-[#007A78] transition-colors shadow-md text-sm">
-              Clear Search
+            <p className="text-slate-500 mb-8 text-sm">We couldn't find any verified NGOs matching your criteria. Try adjusting your search terms.</p>
+            <button onClick={() => { setSearchTerm(''); setSearchParams({}); setNgos([...ngos].sort((a, b) => a.name.localeCompare(b.name))); }} className="px-6 py-2.5 bg-[#0B2948] text-white font-bold rounded-xl hover:bg-[#007A78] transition-colors shadow-md text-sm">
+              Clear Search & Filters
             </button>
           </div>
         ) : (
@@ -109,10 +172,20 @@ export default function NgoDirectoryPage() {
                   </p>
                   
                   <div className="flex items-center justify-between border-t border-slate-50 pt-5 mt-auto">
-                    <div className="flex items-center text-xs font-bold text-slate-400 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100">
-                      <svg className="w-3.5 h-3.5 mr-1 text-[#007A78]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-                      {ngo.address ? ngo.address.split(',')[0] : "Location on file"}
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center text-xs font-bold text-slate-400 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100">
+                        <svg className="w-3.5 h-3.5 mr-1 text-[#007A78]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                        {ngo.address ? ngo.address.split(',')[0] : "Location on file"}
+                      </div>
+                      
+                      {/* THE DISTANCE BADGE: Shows up if the user clicked 'Near Me' */}
+                      {ngo.distance && ngo.distance !== Infinity && (
+                        <div className="text-[10px] font-black text-[#00E5FF] bg-[#0B2948] px-2 py-1.5 rounded-lg shadow-sm">
+                          📍 {ngo.distance < 1 ? '< 1' : ngo.distance.toFixed(1)} km
+                        </div>
+                      )}
                     </div>
+
                     {isVerified && (
                       <span className="flex items-center bg-blue-50 text-blue-600 border border-blue-100 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest shadow-sm">
                         <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"></path></svg>
