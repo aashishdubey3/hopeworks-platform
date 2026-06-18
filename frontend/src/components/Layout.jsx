@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 export default function Layout({ children }) {
-  // THE FIX: Pull the live 'loggedInNgo' directly from the Context brain!
+  // Pull the live 'loggedInNgo' directly from the Context
   const { loggedInNgo, logout } = useAuth(); 
   
   const navigate = useNavigate();
@@ -13,9 +13,11 @@ export default function Layout({ children }) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
 
+  // --- NEW STATE FOR NEWSLETTER ---
+  const [email, setEmail] = useState('');
+  const [subscribed, setSubscribed] = useState(false);
+
   useEffect(() => {
-    // We only need to manually check the Donor now. 
-    // The NGO is handled automatically by the AuthContext!
     setDonor(JSON.parse(localStorage.getItem('userInfo')));
     setDropdownOpen(false); 
   }, [location]);
@@ -31,20 +33,28 @@ export default function Layout({ children }) {
   }, []);
 
   const handleLogout = () => {
-    if (logout) logout(); // This safely clears the NGO context & tokens
-    localStorage.removeItem('userInfo'); // Clear donor info just in case
+    if (logout) logout(); 
+    localStorage.removeItem('userInfo'); 
     setDropdownOpen(false);
-    navigate('/auth'); // Or '/login' depending on your flow
+    navigate('/login'); 
   };
 
-  // Helper function to safely render the Cloudinary URL
+  // --- NEWSLETTER SUBMIT LOGIC ---
+  const handleSubscribe = (e) => {
+    e.preventDefault();
+    if (email.trim()) {
+      setSubscribed(true);
+      setEmail('');
+      setTimeout(() => setSubscribed(false), 5000); // Reset after 5 seconds
+    }
+  };
+
   const getImageUrl = (path) => {
     if (!path) return null;
     if (path.startsWith('http')) return path;
     return `http://localhost:5000${path.startsWith('/') ? '' : '/'}${path}`;
   };
 
-  // THE FIX: Use loggedInNgo instead of the old 'ngo' state
   const userInitial = loggedInNgo?.name?.charAt(0).toUpperCase() || donor?.name?.charAt(0).toUpperCase() || 'U';
   const isNgo = !!loggedInNgo;
   const activeUser = loggedInNgo || donor;
@@ -99,7 +109,7 @@ export default function Layout({ children }) {
                         <svg className="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
                         {isNgo ? "Creator Studio" : "Impact Portfolio"}
                       </Link>
-                      <Link to="/settings" onClick={() => setDropdownOpen(false)} className="flex items-center px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-slate-50 hover:text-[#007A78] transition-colors">
+                      <Link to="/dashboard" onClick={() => setDropdownOpen(false)} className="flex items-center px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-slate-50 hover:text-[#007A78] transition-colors">
                         <svg className="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
                         Account Settings
                       </Link>
@@ -137,7 +147,7 @@ export default function Layout({ children }) {
                 Hope<span className="text-[#00E5FF]">Works</span><span className="text-[#00E5FF]">.</span>
               </Link>
               <p className="text-sm leading-relaxed text-slate-400 max-w-xs">
-                The industry standard for verified philanthropy. Building absolute trust through mathematical transparency and trackable micro-projects.
+                Dedicated to driving social impact, community development, and absolute operational transparency. We empower verified organizations to amplify their reach through mathematically secure philanthropic ledgers.
               </p>
             </div>
             <div>
@@ -159,12 +169,28 @@ export default function Layout({ children }) {
             <div>
               <h4 className="text-white font-bold mb-6 tracking-wider uppercase text-sm">Stay Updated</h4>
               <p className="text-sm mb-4 text-slate-400">Get impact reports and new verified causes delivered securely to your inbox.</p>
-              <form className="flex shadow-lg" onSubmit={(e) => e.preventDefault()}>
-                <input type="email" placeholder="Enter your email" className="bg-white/5 border border-white/10 rounded-l-lg px-4 py-3 text-sm text-white focus:outline-none focus:border-[#00E5FF] w-full transition-colors" />
-                <button type="button" className="bg-[#00E5FF] text-[#0B1120] px-5 py-3 rounded-r-lg font-bold hover:bg-[#00B3CC] transition-colors text-sm">
-                  Subscribe
-                </button>
-              </form>
+              
+              {/* INTERACTIVE NEWSLETTER FORM */}
+              {subscribed ? (
+                <div className="bg-[#007A78]/20 border border-[#007A78] text-[#00E5FF] px-4 py-3 rounded-lg text-sm font-bold flex items-center gap-2">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                  Thanks for subscribing!
+                </div>
+              ) : (
+                <form className="flex shadow-lg" onSubmit={handleSubscribe}>
+                  <input 
+                    type="email" 
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    placeholder="Enter your email" 
+                    className="bg-white/5 border border-white/10 rounded-l-lg px-4 py-3 text-sm text-white focus:outline-none focus:border-[#00E5FF] w-full transition-colors" 
+                  />
+                  <button type="submit" className="bg-[#00E5FF] text-[#0B1120] px-5 py-3 rounded-r-lg font-bold hover:bg-[#00B3CC] transition-colors text-sm">
+                    Subscribe
+                  </button>
+                </form>
+              )}
             </div>
           </div>
           <div className="border-t border-white/10 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-sm">
@@ -173,7 +199,6 @@ export default function Layout({ children }) {
               <Link to="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
               <Link to="/terms" className="hover:text-white transition-colors">Terms of Service</Link>
               
-              {/* THE DISCRETE ADMIN LINK */}
               <Link to="/admin" className="text-xs font-bold text-slate-500 hover:text-[#00E5FF] transition-colors ml-4 border-l border-white/10 pl-4">
                 Admin Portal
               </Link>

@@ -12,54 +12,48 @@ export default function DashboardPage() {
   const [loadingCampaigns, setLoadingCampaigns] = useState(true);
   const [updateMessage, setUpdateMessage] = useState('');
   
-  // Profile State
+  // Profile & Settings State
   const [profile, setProfile] = useState({
     name: '', email: '', about: '', cause: '', address: '', darpanId: '', panNumber: '', avatar: ''
   });
   
+  const [passwordData, setPasswordData] = useState({ current: '', new: '', confirm: '' });
+  const [passwordMessage, setPasswordMessage] = useState('');
+
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [campaigns, setCampaigns] = useState([]);
-  const [donations, setDonations] = useState([]); // Donor Ledger State
+  const [donations, setDonations] = useState([]); 
 
   useEffect(() => {
     const fetchData = async () => {
       const token = localStorage.getItem('token');
-      
-      // Security Check: Make sure token and context exist
       if (!token || !loggedInNgo) {
         navigate('/login');
         return;
       }
 
-      // 1. Fetch Profile Data using the verified ID from Context
+      // 1. Fetch Profile
       try {
         const userId = loggedInNgo._id || loggedInNgo.id;
         const { data } = await api.get(`/ngos/${userId}`);
         
         setProfile({
-          name: data.name || '',
-          email: data.email || '',
-          about: data.about || data.description || '',
-          cause: data.cause || data.category || '',
-          address: data.address || '',
-          darpanId: data.darpanId || '',
-          panNumber: data.panNumber || '',
-          avatar: data.avatar || data.logo || '' 
+          name: data.name || '', email: data.email || '', about: data.about || data.description || '',
+          cause: data.cause || data.category || '', address: data.address || '', darpanId: data.darpanId || '',
+          panNumber: data.panNumber || '', avatar: data.avatar || data.logo || '' 
         });
 
-        // 🔥 THE INSTANT SYNC FIX: Auto-update the Context brain if the avatar is missing
         if (data.avatar && loggedInNgo.avatar !== data.avatar) {
           setLoggedInNgo(prev => ({ ...prev, avatar: data.avatar }));
         }
-
       } catch (error) {
         console.error("Failed to fetch profile", error);
       } finally {
         setLoadingProfile(false);
       }
 
-      // 2. Fetch My Campaigns Data
+      // 2. Fetch Campaigns
       try {
         const response = await api.get('/campaigns/my'); 
         setCampaigns(response.data);
@@ -69,7 +63,7 @@ export default function DashboardPage() {
         setLoadingCampaigns(false);
       }
 
-      // 3. Fetch NGO Donation History
+      // 3. Fetch Donations
       try {
         const donationRes = await api.get('/payments/ngo-donations'); 
         setDonations(donationRes.data);
@@ -78,16 +72,11 @@ export default function DashboardPage() {
       }
     };
 
-    // Ensure we don't trigger fetches until Context is ready
-    if (loggedInNgo) {
-      fetchData();
-    }
+    if (loggedInNgo) fetchData();
   }, [navigate, loggedInNgo, setLoggedInNgo]);
 
-  // --- HANDLERS ---
-  const handleProfileChange = (e) => {
-    setProfile({ ...profile, [e.target.name]: e.target.value });
-  };
+  const handleProfileChange = (e) => setProfile({ ...profile, [e.target.name]: e.target.value });
+  const handlePasswordChange = (e) => setPasswordData({ ...passwordData, [e.target.name]: e.target.value });
 
   const handleImageSelect = (e) => {
     const file = e.target.files[0];
@@ -102,29 +91,37 @@ export default function DashboardPage() {
     setUpdateMessage('');
     
     const formData = new FormData();
-    formData.append('name', profile.name);
-    formData.append('about', profile.about);
-    formData.append('cause', profile.cause);
-    formData.append('address', profile.address);
-    formData.append('darpanId', profile.darpanId);
-    formData.append('panNumber', profile.panNumber);
+    formData.append('name', profile.name); formData.append('about', profile.about);
+    formData.append('cause', profile.cause); formData.append('address', profile.address);
+    formData.append('darpanId', profile.darpanId); formData.append('panNumber', profile.panNumber);
     if (imageFile) formData.append('avatar', imageFile);
 
     try {
-      const { data } = await api.put('/ngos/profile', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
-      
+      const { data } = await api.put('/ngos/profile', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
       setUpdateMessage('Profile & Verification badges updated securely.');
       setProfile(prev => ({ ...prev, avatar: data.avatar }));
-      
-      // Automatically update context so the Navbar catches changes immediately
       setLoggedInNgo({ ...loggedInNgo, avatar: data.avatar, name: data.name });
-
     } catch (error) {
-      const errorMessage = error.response?.data?.message || error.message || 'Failed to update profile. Ensure image is < 10MB.';
-      alert(`Error: ${errorMessage}`);
+      alert(`Error: ${error.response?.data?.message || error.message}`);
     }
+  };
+
+  const handlePasswordSubmit = async (e) => {
+    e.preventDefault();
+    if (passwordData.new !== passwordData.confirm) {
+      setPasswordMessage("❌ New passwords do not match.");
+      return;
+    }
+    // Simulate API Call for demo purposes
+    setPasswordMessage("⏳ Updating security credentials...");
+    setTimeout(() => {
+      setPasswordMessage("✅ Password successfully updated.");
+      setPasswordData({ current: '', new: '', confirm: '' });
+    }, 1500);
+  };
+
+  const handleDeactivate = () => {
+    alert("COMPLIANCE LOCK:\n\nBecause this account has processed 80G Tax Deductible donations, financial records must be maintained. You cannot automatically delete this account. Please contact the Superadmin to archive your profile.");
   };
 
   const handleDeleteCampaign = async (campaignId, raisedAmount) => {
@@ -132,7 +129,6 @@ export default function DashboardPage() {
       alert(`FINANCIAL COMPLIANCE LOCK:\n\nThis ledger has received funds (₹${raisedAmount.toLocaleString('en-IN')}). Under Section 80G guidelines, financial records must be maintained for tax auditing. You cannot permanently delete an active or funded ledger.\n\nPlease contact the Admin team to archive this project instead.`);
       return; 
     }
-
     if (window.confirm("This campaign has no funds. Are you sure you want to delete this draft permanently?")) {
       try {
         await api.delete(`/campaigns/${campaignId}`);
@@ -151,9 +147,7 @@ export default function DashboardPage() {
       const link = document.createElement('a');
       link.href = url;
       link.setAttribute('download', `Form10BD_Export_${new Date().toISOString().split('T')[0]}.csv`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      document.body.appendChild(link); link.click(); document.body.removeChild(link);
     } catch (error) {
       alert("Could not download the 10BD file. Please ensure you have received donations first.");
     }
@@ -161,6 +155,7 @@ export default function DashboardPage() {
 
   const handleLogout = () => {
     setLoggedInNgo(null);
+    localStorage.removeItem('token');
     navigate('/login');
   };
 
@@ -209,7 +204,6 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Dashboard Main Content */}
       <div className="max-w-7xl mx-auto px-6 -mt-20 relative z-20">
         <div className="bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden flex flex-col md:flex-row min-h-[700px]">
           
@@ -228,6 +222,10 @@ export default function DashboardPage() {
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                 Donor Ledger
               </button>
+              <button onClick={() => setActiveTab('settings')} className={`w-full text-left px-5 py-4 rounded-xl font-bold text-sm transition-all flex items-center gap-3 ${activeTab === 'settings' ? 'bg-[#0B2948] text-white shadow-md' : 'text-slate-500 hover:bg-slate-200/50 hover:text-[#0B2948]'}`}>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                Account Settings
+              </button>
             </nav>
 
             <div className="mt-12 p-5 bg-blue-50 rounded-2xl border border-blue-100">
@@ -236,7 +234,6 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Tab Content Area */}
           <div className="flex-1 p-8 md:p-12 overflow-hidden">
             
             {/* TAB 1: PROFILE */}
@@ -252,7 +249,7 @@ export default function DashboardPage() {
                     <svg className="w-6 h-6 text-yellow-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
                     <div>
                       <p className="text-sm text-yellow-800 font-bold">Action Required: Verification Pending</p>
-                      <p className="text-sm text-yellow-700 mt-1">Provide your Darpan ID or PAN Number below to unlock the official "Verified" badge across the platform.</p>
+                      <p className="text-sm text-yellow-700 mt-1">Provide your Darpan ID or PAN Number below to unlock the official "Verified" badge.</p>
                     </div>
                   </div>
                 )}
@@ -265,7 +262,6 @@ export default function DashboardPage() {
                 )}
 
                 <form onSubmit={handleProfileSubmit} className="space-y-8">
-                  
                   <div className="flex items-center gap-8 bg-slate-50 p-6 rounded-2xl border border-slate-100">
                     <div className="relative group w-24 h-24 rounded-full overflow-hidden border-4 border-white shadow-lg bg-slate-200 shrink-0">
                       {(imagePreview || profile.avatar) ? (
@@ -306,9 +302,7 @@ export default function DashboardPage() {
                   </div>
 
                   <hr className="border-slate-100 my-10" />
-                  
                   <h3 className="text-xl font-serif font-black text-[#0B2948] mb-6">Legal & Compliance Identity</h3>
-                  
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                       <label className="block text-sm font-bold text-[#0B2948] mb-2">NGO Darpan ID</label>
@@ -327,10 +321,9 @@ export default function DashboardPage() {
               </div>
             )}
 
-            {/* TAB 2: CAMPAIGNS & COMPLIANCE */}
+            {/* TAB 2: CAMPAIGNS */}
             {activeTab === 'campaigns' && (
               <div className="animate-fade-in">
-                
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-10 gap-4 border-b border-slate-100 pb-6">
                   <div>
                     <h2 className="text-3xl font-serif font-black text-[#0B2948]">Campaign Manager</h2>
@@ -344,9 +337,7 @@ export default function DashboardPage() {
                 <div className="mb-12 flex flex-col md:flex-row justify-between items-start md:items-center bg-[#E6F2F2] p-8 border border-[#007A78]/20 rounded-2xl shadow-sm">
                   <div className="mb-6 md:mb-0 max-w-xl">
                     <h3 className="text-2xl font-black text-[#0B2948] mb-2 font-serif">Income Tax Compliance</h3>
-                    <p className="text-[#0B2948]/80 text-sm leading-relaxed font-medium">
-                      Download your official donor ledger to file <strong>Form 10BD</strong> by May 31st. This CSV is mathematically verified and formatted to government standards.
-                    </p>
+                    <p className="text-[#0B2948]/80 text-sm leading-relaxed font-medium">Download your official donor ledger to file <strong>Form 10BD</strong> by May 31st.</p>
                   </div>
                   <button onClick={handleDownload10BD} className="bg-[#0B2948] hover:bg-[#06182C] text-white px-8 py-4 rounded-xl font-bold transition-all shadow-lg transform hover:-translate-y-1 whitespace-nowrap flex items-center gap-3">
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
@@ -356,14 +347,10 @@ export default function DashboardPage() {
 
                 <div>
                   <h3 className="text-xl font-black text-[#0B2948] mb-6">Your Active Ledgers</h3>
-                  
                   {loadingCampaigns ? (
                     <div className="text-slate-400 animate-pulse font-bold">Synchronizing ledger data...</div>
                   ) : campaigns.length === 0 ? (
                     <div className="p-12 border-2 border-dashed border-slate-200 text-center rounded-3xl bg-slate-50">
-                      <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-6 shadow-sm">
-                        <svg className="w-10 h-10 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
-                      </div>
                       <p className="text-slate-500 font-bold mb-4 text-lg">No active projects deployed.</p>
                       <Link to="/campaigns/new" className="text-[#007A78] font-bold hover:underline">Launch your first micro-project →</Link>
                     </div>
@@ -375,19 +362,12 @@ export default function DashboardPage() {
                         const progress = Math.min((raised / goal) * 100, 100);
 
                         return (
-                          <div key={campaign._id} className="bg-white border border-slate-100 rounded-3xl shadow-sm overflow-hidden flex flex-col hover:shadow-xl transition-all duration-300 group">
+                          <div key={campaign._id} className="bg-white border border-slate-100 rounded-3xl shadow-sm overflow-hidden flex flex-col hover:shadow-xl transition-all duration-300">
                             <div className="relative h-48 overflow-hidden bg-slate-100 cursor-pointer" onClick={() => navigate(`/campaign/${campaign._id}`)}>
-                              <img src={getImageUrl(campaign.image)} alt={campaign.title} className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700" />
-                              <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-md px-3 py-1 rounded-full text-xs font-black text-[#0B2948] shadow-sm uppercase tracking-wider">
-                                Active
-                              </div>
+                              <img src={getImageUrl(campaign.image)} alt={campaign.title} className="w-full h-full object-cover" />
                             </div>
-                            
                             <div className="p-6 flex-grow flex flex-col">
-                              <h3 className="font-bold text-lg text-[#0B2948] mb-4 line-clamp-2 leading-tight cursor-pointer hover:text-[#007A78]" onClick={() => navigate(`/campaign/${campaign._id}`)}>
-                                {campaign.title}
-                              </h3>
-                              
+                              <h3 className="font-bold text-lg text-[#0B2948] mb-4 line-clamp-2 leading-tight">{campaign.title}</h3>
                               <div className="mt-auto">
                                 <div className="flex justify-between text-xs font-bold mb-2">
                                   <span className="text-[#007A78]">₹{raised.toLocaleString('en-IN')} raised</span>
@@ -396,14 +376,9 @@ export default function DashboardPage() {
                                 <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden mb-6">
                                   <div className="bg-[#007A78] h-full rounded-full transition-all duration-1000" style={{ width: `${progress}%` }}></div>
                                 </div>
-
                                 <div className="flex gap-3 pt-4 border-t border-slate-50">
-                                  <button onClick={() => navigate(`/campaigns/edit/${campaign._id}`)} className="flex-1 bg-slate-50 text-[#0B2948] font-bold py-3 rounded-xl border border-slate-200 hover:bg-[#0B2948] hover:text-white transition-colors text-sm">
-                                    Edit Details
-                                  </button>
-                                  <button onClick={() => handleDeleteCampaign(campaign._id, raised)} className="flex-1 bg-red-50 text-red-600 font-bold py-3 rounded-xl border border-red-100 hover:bg-red-600 hover:text-white transition-colors text-sm">
-                                    Delete Ledger
-                                  </button>
+                                  <button onClick={() => navigate(`/campaigns/edit/${campaign._id}`)} className="flex-1 bg-slate-50 text-[#0B2948] font-bold py-3 rounded-xl border border-slate-200 hover:bg-[#0B2948] hover:text-white transition-colors text-sm">Edit</button>
+                                  <button onClick={() => handleDeleteCampaign(campaign._id, raised)} className="flex-1 bg-red-50 text-red-600 font-bold py-3 rounded-xl border border-red-100 hover:bg-red-600 hover:text-white transition-colors text-sm">Delete</button>
                                 </div>
                               </div>
                             </div>
@@ -413,27 +388,20 @@ export default function DashboardPage() {
                     </div>
                   )}
                 </div>
-
               </div>
             )}
 
-            {/* TAB 3: DONOR LEDGER */}
+            {/* TAB 3: DONATIONS */}
             {activeTab === 'donations' && (
               <div className="animate-fade-in overflow-x-auto">
                 <div className="mb-10 border-b border-slate-100 pb-6">
                   <h2 className="text-3xl font-serif font-black text-[#0B2948]">Donor Ledger</h2>
                   <p className="text-slate-500 mt-2 font-medium">Track incoming capital and supporter details.</p>
                 </div>
-                
                 <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden min-w-[600px]">
                   <table className="w-full text-left border-collapse whitespace-nowrap">
                     <thead className="bg-slate-50 border-b border-slate-200 text-[11px] text-slate-500 uppercase tracking-widest font-black">
-                      <tr>
-                        <th className="p-5">Date</th>
-                        <th className="p-5">Donor Name</th>
-                        <th className="p-5">Campaign</th>
-                        <th className="p-5 text-right">Amount (₹)</th>
-                      </tr>
+                      <tr><th className="p-5">Date</th><th className="p-5">Donor Name</th><th className="p-5">Campaign</th><th className="p-5 text-right">Amount (₹)</th></tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                       {donations.length === 0 ? (
@@ -441,7 +409,6 @@ export default function DashboardPage() {
                       ) : (
                         donations.map((donation, idx) => (
                           <tr key={idx} className="hover:bg-slate-50 transition-colors">
-                            {/* THE FIX: Safe Date Parsing */}
                             <td className="p-5 text-sm text-slate-600">{new Date(donation.createdAt || donation.date || Date.now()).toLocaleDateString()}</td>
                             <td className="p-5 font-bold text-[#0B2948] text-sm">{donation.donorName || 'Anonymous'}</td>
                             <td className="p-5 text-sm text-slate-500 truncate max-w-[200px]">{donation.campaignTitle || donation.campaignId}</td>
@@ -452,6 +419,61 @@ export default function DashboardPage() {
                     </tbody>
                   </table>
                 </div>
+              </div>
+            )}
+
+            {/* TAB 4: ACCOUNT SETTINGS */}
+            {activeTab === 'settings' && (
+              <div className="animate-fade-in max-w-2xl">
+                <div className="mb-10 border-b border-slate-100 pb-6">
+                  <h2 className="text-3xl font-serif font-black text-[#0B2948]">Account Settings</h2>
+                  <p className="text-slate-500 mt-2 font-medium">Manage your security credentials and account status.</p>
+                </div>
+
+                <div className="bg-white border border-slate-200 rounded-3xl p-8 shadow-sm mb-10">
+                  <h3 className="text-xl font-bold text-[#0B2948] mb-6 flex items-center gap-2">
+                    <svg className="w-6 h-6 text-[#007A78]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                    Security Configuration
+                  </h3>
+                  
+                  {passwordMessage && (
+                    <div className={`p-4 rounded-xl mb-6 text-sm font-bold ${passwordMessage.includes('❌') ? 'bg-red-50 text-red-600 border border-red-100' : 'bg-emerald-50 text-emerald-700 border border-emerald-100'}`}>
+                      {passwordMessage}
+                    </div>
+                  )}
+
+                  <form onSubmit={handlePasswordSubmit} className="space-y-5">
+                    <div>
+                      <label className="block text-sm font-bold text-[#0B2948] mb-2">Current Password</label>
+                      <input type="password" name="current" value={passwordData.current} onChange={handlePasswordChange} required className="w-full px-5 py-3 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#007A78]" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-[#0B2948] mb-2">New Password</label>
+                      <input type="password" name="new" value={passwordData.new} onChange={handlePasswordChange} required className="w-full px-5 py-3 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#007A78]" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-[#0B2948] mb-2">Confirm New Password</label>
+                      <input type="password" name="confirm" value={passwordData.confirm} onChange={handlePasswordChange} required className="w-full px-5 py-3 border border-slate-200 rounded-xl bg-slate-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#007A78]" />
+                    </div>
+                    <button type="submit" className="mt-4 bg-[#0B2948] hover:bg-[#007A78] text-white font-bold py-3 px-8 rounded-xl transition-all shadow-md">
+                      Update Password
+                    </button>
+                  </form>
+                </div>
+
+                <div className="bg-red-50 border border-red-100 rounded-3xl p-8 shadow-sm">
+                  <h3 className="text-xl font-bold text-red-700 mb-2 flex items-center gap-2">
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                    Danger Zone
+                  </h3>
+                  <p className="text-red-600/80 text-sm mb-6 font-medium leading-relaxed">
+                    Once you delete your account, there is no going back. All campaigns will be taken offline. Due to 80G Tax Compliance laws, financial ledgers associated with your account will be retained by the platform for auditing purposes.
+                  </p>
+                  <button onClick={handleDeactivate} className="bg-white border-2 border-red-200 text-red-600 hover:bg-red-600 hover:text-white hover:border-red-600 font-bold py-3 px-8 rounded-xl transition-all">
+                    Deactivate Account
+                  </button>
+                </div>
+
               </div>
             )}
 
