@@ -21,6 +21,11 @@ import NgoProfilePage from './pages/NgoProfilePage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import VerifyEmailPage from './pages/VerifyEmailPage';
 import EditCampaign from './pages/EditCampaign';
+import DonorLoginPage from './pages/DonorLoginPage';
+import DonorSignupPage from './pages/DonorSignupPage';
+import DonorDashboard from './pages/DonorDashboard';
+import InfoPage from './pages/InfoPage';
+
 function App() {
   return (
     <AuthProvider>
@@ -41,6 +46,14 @@ function App() {
             <Route path="/campaign/:id" element={<CampaignDetailsPage />} />
             <Route path="/corporate" element={<CsrPage />} /> 
             <Route path="/donate/:id" element={<DonatePage />} />
+            <Route path="/donor-login" element={<DonorLoginPage />} />
+            <Route path="/donor-signup" element={<DonorSignupPage />} />
+            <Route path="/my-impact" element={<DonorDashboard />} />
+            <Route path="/about" element={<InfoPage title="Our Mission" description="HopeWorks connects verified causes with supporters through transparent, documented impact." />} />
+            <Route path="/compliance" element={<InfoPage title="80G Tax Compliance" description="We help supporters and partner organizations maintain transparent receipts and compliance documentation." />} />
+            <Route path="/contact" element={<InfoPage title="Contact Us" description="Reach our support team for donation, NGO onboarding, and platform questions." />} />
+            <Route path="/privacy" element={<InfoPage title="Privacy Policy" description="We protect donor, NGO, and campaign data with secure handling and transparency practices." />} />
+            <Route path="/terms" element={<InfoPage title="Terms of Service" description="Use of HopeWorks is governed by our platform terms and community standards." />} />
             <Route path="/ngos" element={<NgoDirectoryPage />} />
             <Route path="/ngo/:id" element={<NgoProfilePage />} />
             

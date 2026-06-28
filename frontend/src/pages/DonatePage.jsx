@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import FormInput from '../components/FormInput';
 import Button from '../components/Button';
 import api from '../utils/api';
@@ -16,14 +16,21 @@ const loadRazorpayScript = () => {
 };
 
 export default function DonatePage() {
-  const { id } = useParams();  
-  
+  const { id } = useParams();
+  const navigate = useNavigate();
+
   const [formData, setFormData] = useState({ name: '', email: '', amount: '1000', pan: '' });
   const [step, setStep] = useState(1); 
   const [error, setError] = useState('');
 
-  // Pre-load the script in the background as soon as the page opens
   useEffect(() => {
+    const donor = JSON.parse(localStorage.getItem('userInfo') || 'null');
+    if (donor?.role === 'donor') {
+      setFormData((prev) => ({ ...prev, name: donor.name || '', email: donor.email || '' }));
+    } else {
+      setError('Please create or log in to a donor account before making a donation.');
+    }
+
     loadRazorpayScript();
   }, []);
 
@@ -34,6 +41,13 @@ export default function DonatePage() {
   const handlePayment = async (e) => {
     e.preventDefault();
     setError('');
+
+    const donor = JSON.parse(localStorage.getItem('userInfo') || 'null');
+    if (donor?.role !== 'donor') {
+      setError('Please create or log in to a donor account before donating.');
+      navigate('/donor-login');
+      return;
+    }
     
     if (isHighValue) {
       const panValue = formData.pan.trim().toUpperCase();

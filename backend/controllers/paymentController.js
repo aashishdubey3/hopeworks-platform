@@ -122,13 +122,41 @@ export const verifyPayment = async (req, res) => {
 // @route   GET /api/payments/my
 export const getMyDonations = async (req, res) => {
   try {
-    const donations = await Donor.find({ user: req.user._id })
-      .populate('campaign', 'title image ngo')
-      .sort({ createdAt: -1 }); 
-      
-    res.json(donations);
+    const donorEmail = req.user?.email || req.ngo?.email || req.query?.email;
+
+    if (!donorEmail) {
+      return res.status(401).json({ message: 'Not authorized' });
+    }
+
+    const donations = await Donor.find({ email: donorEmail }).sort({ createdAt: -1 });
+
+    const enrichedDonations = await Promise.all(
+      donations.map(async (donation) => {
+        const campaign = await Campaign.findById(donation.campaignId).select('title image ngo');
+        let ngoName = 'Verified NGO';
+
+        if (campaign?.ngo) {
+          const ngo = await Ngo.findById(campaign.ngo).select('name');
+          ngoName = ngo?.name || ngoName;
+        }
+
+        return {
+          ...donation.toObject(),
+          campaign: campaign ? {
+            _id: campaign._id,
+            title: campaign.title,
+            image: campaign.image,
+            ngo: campaign.ngo
+          } : null,
+          campaignTitle: campaign?.title || 'General donation',
+          ngoName
+        };
+      })
+    );
+
+    res.json(enrichedDonations);
   } catch (error) {
-    console.error("Fetch My Donations Error:", error);
+    console.error('Fetch My Donations Error:', error);
     res.status(500).json({ message: 'Server error fetching donation history.' });
   }
 };

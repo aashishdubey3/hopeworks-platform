@@ -11,7 +11,7 @@ import {
 const router = express.Router();
 
 // 1. Dashboard Routes 
-router.get('/my', protect, getMyDonations);
+router.get('/my', getMyDonations);
 router.get('/ngo-donations', protect, getNgoDonations); // For NGO Creator Studio
 router.get('/all-donations', getAllDonations);          // For Admin Panel
 

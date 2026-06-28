@@ -23,9 +23,8 @@ export default function NgoDirectoryPage() {
   const [ngos, setNgos] = useState([]);
   const [searchTerm, setSearchTerm] = useState(initialSearch);
   const [loading, setLoading] = useState(true);
-  
-  // New State for the GPS feature
   const [isLocating, setIsLocating] = useState(false);
+  const [locationActive, setLocationActive] = useState(false);
 
   const getImageUrl = (path) => {
     if (!path) return null;
@@ -40,20 +39,19 @@ export default function NgoDirectoryPage() {
         const response = await api.get(`/ngos?search=${encodeURIComponent(initialSearch)}`);
         setNgos(response.data);
       } catch (error) {
-        console.error("Failed to fetch NGOs", error);
+        console.error('Failed to fetch NGOs', error);
       } finally {
         setLoading(false);
       }
     };
     fetchNgos();
-    setSearchTerm(initialSearch); 
+    setSearchTerm(initialSearch);
   }, [initialSearch]);
-  // Add this right below your existing useEffect!
+
   useEffect(() => {
-    // If the URL has ?nearMe=true AND the NGOs are fully loaded...
     if (!loading && ngos.length > 0 && searchParams.get('nearMe') === 'true') {
-      handleNearMeClick(); // Auto-trigger the GPS!
-      setSearchParams({}); // Clear the URL so it doesn't loop
+      handleNearMeClick();
+      setSearchParams({});
     }
   }, [loading, ngos.length, searchParams]);
 
@@ -65,7 +63,7 @@ export default function NgoDirectoryPage() {
   // --- THE FEATURE: Geolocation Sorting Logic ---
   const handleNearMeClick = () => {
     if (!navigator.geolocation) {
-      alert("Geolocation is not supported by your browser");
+      alert('Geolocation is not supported by your browser');
       return;
     }
 
@@ -77,18 +75,23 @@ export default function NgoDirectoryPage() {
         const userLng = position.coords.longitude;
 
         const sortedNgos = [...ngos]
-          .map(ngo => {
-            const distance = calculateDistance(userLat, userLng, ngo.latitude, ngo.longitude);
-            return { ...ngo, distance };
-          })
-          .sort((a, b) => a.distance - b.distance);
+          .map((ngo) => ({
+            ...ngo,
+            distance: calculateDistance(userLat, userLng, ngo.latitude, ngo.longitude)
+          }))
+          .sort((a, b) => {
+            if (a.distance === Infinity) return 1;
+            if (b.distance === Infinity) return -1;
+            return a.distance - b.distance;
+          });
 
         setNgos(sortedNgos);
+        setLocationActive(true);
         setIsLocating(false);
       },
       (error) => {
-        console.error("Error getting location", error);
-        alert("Please allow location access to find NGOs near you.");
+        console.error('Error getting location', error);
+        alert('Please allow location access to find NGOs near you.');
         setIsLocating(false);
       }
     );
@@ -186,8 +189,7 @@ export default function NgoDirectoryPage() {
                         {ngo.address ? ngo.address.split(',')[0] : "Location on file"}
                       </div>
                       
-                      {/* THE DISTANCE BADGE: Shows up if the user clicked 'Near Me' */}
-                      {ngo.distance && ngo.distance !== Infinity && (
+                      {locationActive && ngo.distance && ngo.distance !== Infinity && (
                         <div className="text-[10px] font-black text-[#00E5FF] bg-[#0B2948] px-2 py-1.5 rounded-lg shadow-sm">
                           📍 {ngo.distance < 1 ? '< 1' : ngo.distance.toFixed(1)} km
                         </div>

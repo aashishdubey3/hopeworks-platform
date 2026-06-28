@@ -36,7 +36,7 @@ export default function Layout({ children }) {
     if (logout) logout(); 
     localStorage.removeItem('userInfo'); 
     setDropdownOpen(false);
-    navigate('/login'); 
+    navigate(donor?.role === 'donor' ? '/donor-login' : '/login'); 
   };
 
   // --- NEWSLETTER SUBMIT LOGIC ---
