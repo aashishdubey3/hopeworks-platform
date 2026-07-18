@@ -1,6 +1,31 @@
 import Ngo from '../models/Ngo.js';
 import Campaign from '../models/Campaign.js';
 import CsrInquiry from '../models/CsrInquiry.js';
+import jwt from 'jsonwebtoken';
+
+// @desc    Admin Login
+// @route   POST /api/admin/login
+export const loginAdmin = (req, res) => {
+  const { email, password } = req.body;
+
+  // Verify against the secure environment variables
+  if (email === process.env.ADMIN_EMAIL && password === process.env.ADMIN_PASSWORD) {
+    
+    // Generate a token specifically tagged with the 'admin' role
+    const token = jwt.sign(
+      { role: 'admin', email: process.env.ADMIN_EMAIL }, 
+      process.env.JWT_SECRET, 
+      { expiresIn: '12h' }
+    );
+
+    return res.status(200).json({ 
+      message: 'Admin login successful', 
+      token 
+    });
+  } else {
+    return res.status(401).json({ message: 'Invalid admin credentials' });
+  }
+};
 
 // @desc    Get all NGOs
 // @route   GET /api/admin/ngos

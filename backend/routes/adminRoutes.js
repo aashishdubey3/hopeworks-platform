@@ -1,24 +1,29 @@
 import express from 'express';
 
 import { 
+  loginAdmin,
   getAllNgos, 
   toggleNgoStatus, 
   getAllCampaigns, 
   deleteCampaign,
-  getAllCsrInquiries, // <-- ADDED THIS
-  toggleCsrStatus     // <-- ADDED THIS
+  getAllCsrInquiries, 
+  toggleCsrStatus     
 } from '../controllers/adminController.js';
+import { verifyAdmin } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-// Routes for the Admin Dashboard
-router.get('/ngos', getAllNgos);
-router.put('/ngo/:id/status', toggleNgoStatus);
-router.get('/campaigns', getAllCampaigns);
-router.delete('/campaign/:id', deleteCampaign);
+// Public Route (Used to generate the Admin Token)
+router.post('/login', loginAdmin);
 
-// CSR Routes
-router.get('/csr', getAllCsrInquiries);
-router.put('/csr/:id/status', toggleCsrStatus);
+// Protected Admin Dashboard Routes
+router.get('/ngos', verifyAdmin, getAllNgos);
+router.put('/ngo/:id/status', verifyAdmin, toggleNgoStatus);
+router.get('/campaigns', verifyAdmin, getAllCampaigns);
+router.delete('/campaign/:id', verifyAdmin, deleteCampaign);
+
+// Protected CSR Routes
+router.get('/csr', verifyAdmin, getAllCsrInquiries);
+router.put('/csr/:id/status', verifyAdmin, toggleCsrStatus);
 
 export default router;

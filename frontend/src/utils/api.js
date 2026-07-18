@@ -7,8 +7,8 @@ const api = axios.create({
 
 // Automatically attach the correct JWT token to every request
 api.interceptors.request.use((config) => {
-  // THE FIX: Directly grab the 'token' key that LoginPage.jsx created
-  const token = localStorage.getItem('token');
+  // THE FIX: Check for the admin token first. If it's not there, fall back to the regular NGO token.
+  const token = localStorage.getItem('adminToken') || localStorage.getItem('token');
   
   // Attach it to the secure headers
   if (token) {
