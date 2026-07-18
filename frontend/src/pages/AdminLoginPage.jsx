@@ -1,12 +1,10 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import api from '../utils/api'; // Your configured axios instance
 
 const AdminLoginPage = () => {
   const [credentials, setCredentials] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
 
   const handleChange = (e) => {
     setCredentials({ ...credentials, [e.target.name]: e.target.value });
@@ -23,8 +21,10 @@ const AdminLoginPage = () => {
       // Store the admin token securely in localStorage
       localStorage.setItem('adminToken', response.data.token);
       
-      // Redirect to the protected dashboard
-      navigate('/admin-dashboard');
+      // HARD REDIRECT: Forces a full page reload so global state updates
+      // This immediately fixes the "blank screen" React quirk.
+      window.location.href = '/admin';
+      
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to securely log in.');
     } finally {
@@ -33,7 +33,7 @@ const AdminLoginPage = () => {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-50">
+    <div className="flex items-center justify-center min-h-[80vh] bg-gray-50">
       <div className="w-full max-w-md p-8 space-y-6 bg-white rounded-lg shadow-md">
         <h2 className="text-2xl font-bold text-center text-[#0B2948]">Admin Portal Login</h2>
         
@@ -48,7 +48,7 @@ const AdminLoginPage = () => {
               value={credentials.email}
               onChange={handleChange}
               required
-              className="w-full p-2 mt-1 border rounded-md focus:ring-[#007A78] focus:border-[#007A78]"
+              className="w-full p-2 mt-1 border rounded-md focus:ring-[#007A78] focus:border-[#007A78] outline-none"
             />
           </div>
           
@@ -60,7 +60,7 @@ const AdminLoginPage = () => {
               value={credentials.password}
               onChange={handleChange}
               required
-              className="w-full p-2 mt-1 border rounded-md focus:ring-[#007A78] focus:border-[#007A78]"
+              className="w-full p-2 mt-1 border rounded-md focus:ring-[#007A78] focus:border-[#007A78] outline-none"
             />
           </div>
           
