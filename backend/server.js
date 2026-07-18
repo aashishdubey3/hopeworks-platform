@@ -12,6 +12,8 @@ import authRoutes from './routes/authRoutes.js';
 import csrRoutes from './routes/csrRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import path from 'path';
+import contactRoutes from './routes/contactRoutes.js';
+
 
 // Load environment variables
 dotenv.config();
@@ -34,6 +36,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/csr', csrRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/contact', contactRoutes);
+
+
 
 // Expose the uploads folder to the frontend
 const __dirname = path.resolve();
