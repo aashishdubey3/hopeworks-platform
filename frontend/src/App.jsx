@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import Layout from './components/Layout';
+import ContactPage from './pages/ContactPage';
 
 // Core Pages
 import HomePage from './pages/HomePage';
@@ -64,7 +65,7 @@ function App() {
             <Route path="/my-impact" element={<DonorDashboard />} />
             <Route path="/about" element={<InfoPage title="Our Mission" description="HopeWorks connects verified causes with supporters through transparent, documented impact." />} />
             <Route path="/compliance" element={<InfoPage title="80G Tax Compliance" description="We help supporters and partner organizations maintain transparent receipts and compliance documentation." />} />
-            <Route path="/contact" element={<InfoPage title="Contact Us" description="Reach our support team for donation, NGO onboarding, and platform questions." />} />
+            <Route path="/contact" element={<ContactPage />} />
             <Route path="/privacy" element={<InfoPage title="Privacy Policy" description="We protect donor, NGO, and campaign data with secure handling and transparency practices." />} />
             <Route path="/terms" element={<InfoPage title="Terms of Service" description="Use of HopeWorks is governed by our platform terms and community standards." />} />
             <Route path="/ngos" element={<NgoDirectoryPage />} />
