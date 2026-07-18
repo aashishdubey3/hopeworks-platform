@@ -9,6 +9,7 @@ export default function AdminDashboard() {
   const [csrLeads, setCsrLeads] = useState([]);
   const [donations, setDonations] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
   
   // Audit Modal State
   const [auditNgo, setAuditNgo] = useState(null); 
@@ -72,6 +73,21 @@ export default function AdminDashboard() {
   };
 
   const pendingNgosCount = ngos.filter(n => n.status === 'pending').length;
+  const verifiedNgosCount = ngos.filter(n => n.status === 'verified' || n.status === 'active' || n.isEmailVerified).length;
+  const activeCampaignsCount = campaigns.filter(c => (c.status && c.status !== 'draft') || Number(c.raised || c.raisedAmount || 0) > 0).length;
+  const totalRaised = campaigns.reduce((sum, camp) => sum + Number(camp.raised || camp.raisedAmount || 0), 0);
+  const totalDonationValue = donations.reduce((sum, donation) => sum + Number(donation.amount || 0), 0);
+  const pendingCsrCount = csrLeads.filter((lead) => lead.status === 'Pending Review').length;
+
+  const filteredNgos = ngos.filter((ngo) => {
+    const query = searchTerm.toLowerCase();
+    return !query || [ngo.name, ngo.email, ngo.darpanId || '', ngo.address || ''].join(' ').toLowerCase().includes(query);
+  });
+
+  const filteredCampaigns = campaigns.filter((camp) => {
+    const query = searchTerm.toLowerCase();
+    return !query || [camp.title, camp.ngo || '', camp.description || ''].join(' ').toLowerCase().includes(query);
+  });
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] pb-24 font-sans">
@@ -180,6 +196,40 @@ export default function AdminDashboard() {
       </div>
 
       <div className="max-w-7xl mx-auto px-6 -mt-12 relative z-10 animate-fade-in">
+        <div className="mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-lg">
+            <p className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">Registered NGOs</p>
+            <p className="mt-3 text-3xl font-black text-[#0B2948]">{ngos.length}</p>
+            <p className="mt-2 text-sm text-slate-500">{verifiedNgosCount} verified and active</p>
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-lg">
+            <p className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">Pending approvals</p>
+            <p className="mt-3 text-3xl font-black text-[#007A78]">{pendingNgosCount}</p>
+            <p className="mt-2 text-sm text-slate-500">Needs review before going live</p>
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-lg">
+            <p className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">Campaigns live</p>
+            <p className="mt-3 text-3xl font-black text-[#0B2948]">{activeCampaignsCount}</p>
+            <p className="mt-2 text-sm text-slate-500">₹{totalRaised.toLocaleString('en-IN')} total raised</p>
+          </div>
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-lg">
+            <p className="text-xs font-black uppercase tracking-[0.25em] text-slate-400">CSR + donations</p>
+            <p className="mt-3 text-3xl font-black text-[#007A78]">{csrLeads.length + donations.length}</p>
+            <p className="mt-2 text-sm text-slate-500">₹{totalDonationValue.toLocaleString('en-IN')} in donations</p>
+          </div>
+        </div>
+
+        <div className="mb-6 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-lg md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="text-sm font-black uppercase tracking-[0.25em] text-slate-400">Operations overview</p>
+            <p className="text-sm text-slate-500">Review approvals, transaction health, and partner activity from a single control center.</p>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <div className="rounded-full bg-amber-50 px-3 py-1 text-sm font-semibold text-amber-700">{pendingNgosCount} pending NGOs</div>
+            <div className="rounded-full bg-blue-50 px-3 py-1 text-sm font-semibold text-blue-700">{pendingCsrCount} CSR leads awaiting review</div>
+          </div>
+        </div>
+
         {loading ? (
           <div className="bg-white p-20 rounded-2xl shadow-xl border border-slate-100 flex flex-col items-center justify-center">
              <div className="w-10 h-10 border-4 border-[#0B2948] border-t-transparent rounded-full animate-spin mb-4"></div>
@@ -188,6 +238,15 @@ export default function AdminDashboard() {
         ) : (
           <div className="bg-white border border-slate-100 rounded-2xl shadow-xl overflow-x-auto">
             
+            <div className="border-b border-slate-200 bg-slate-50 px-5 py-4">
+              <input
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search NGOs, campaigns, or partners..."
+                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none focus:border-[#007A78]"
+              />
+            </div>
+
             {/* TAB 1: NGOs */}
             {activeTab === 'ngos' && (
               <table className="w-full text-left border-collapse whitespace-nowrap min-w-max">
@@ -200,7 +259,7 @@ export default function AdminDashboard() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {ngos.map(ngo => (
+                  {filteredNgos.map(ngo => (
                     <tr key={ngo._id} className={`${ngo.isBanned ? 'bg-red-50/50' : ngo.status === 'pending' ? 'bg-amber-50/30' : 'hover:bg-slate-50'} transition-colors`}>
                       <td className="p-5">
                         <div className="flex items-center gap-2">
@@ -241,7 +300,7 @@ export default function AdminDashboard() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {campaigns.map(camp => {
+                  {filteredCampaigns.map(camp => {
                      const raised = camp.raised || camp.raisedAmount || 0;
                      const goal = camp.goal || camp.goalAmount || 1;
                      const progress = Math.min((raised / goal) * 100, 100);

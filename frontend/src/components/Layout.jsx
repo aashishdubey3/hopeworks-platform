@@ -33,10 +33,14 @@ export default function Layout({ children }) {
   }, []);
 
   const handleLogout = () => {
-    if (logout) logout(); 
-    localStorage.removeItem('userInfo'); 
+    if (logout) logout();
+    localStorage.removeItem('userInfo');
+    localStorage.removeItem('token');
+    localStorage.removeItem('ngoData');
+    localStorage.removeItem('ngoInfo');
+    localStorage.removeItem('loggedInNgoId');
     setDropdownOpen(false);
-    navigate(donor?.role === 'donor' ? '/donor-login' : '/login'); 
+    navigate(donor?.role === 'donor' ? '/donor-login' : '/login');
   };
 
   // --- NEWSLETTER SUBMIT LOGIC ---
@@ -84,8 +88,8 @@ export default function Layout({ children }) {
                 <>
                   <button 
                     onClick={() => setDropdownOpen(!dropdownOpen)}
-                    className={`relative w-11 h-11 rounded-full border-2 flex items-center justify-center font-bold text-lg transition-all duration-300 shadow-sm hover:shadow-md transform hover:-translate-y-0.5 overflow-hidden ${
-                      isNgo ? 'border-[#0F172A] bg-slate-50 text-[#0F172A]' : 'border-[#007A78] bg-teal-50 text-[#007A78]'
+                    className={`relative w-11 h-11 rounded-full border-2 flex items-center justify-center font-bold text-lg transition-all duration-300 shadow-sm hover:shadow-md transform hover:-translate-y-0.5 overflow-hidden ring-4 ${
+                      isNgo ? 'border-[#0F172A] bg-slate-50 text-[#0F172A] ring-[#0F172A]/10' : 'border-[#007A78] bg-teal-50 text-[#007A78] ring-[#00E5FF]/20'
                     }`}
                   >
                     {activeUser.avatar ? (

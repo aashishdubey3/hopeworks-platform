@@ -3,7 +3,6 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-// 1. Initialize the Pure Google API Client (Bypasses Nodemailer completely)
 const createGmailClient = async () => {
   try {
     const OAuth2 = google.auth.OAuth2;
@@ -17,7 +16,6 @@ const createGmailClient = async () => {
       refresh_token: process.env.GMAIL_REFRESH_TOKEN,
     });
 
-    // We use the official Gmail v1 API
     const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
     return gmail;
   } catch (err) {
@@ -26,7 +24,6 @@ const createGmailClient = async () => {
   }
 };
 
-// 2. Helper function to encode emails safely for Google's REST API
 const encodeMessage = (to, subject, htmlContent) => {
   const str = [
     `From: "HopeWorks Platform" <${process.env.GMAIL_USER}>`,
@@ -36,14 +33,12 @@ const encodeMessage = (to, subject, htmlContent) => {
     `Content-Type: text/html; charset="UTF-8"`,
     ``,
     htmlContent
-  ].join('\n');
+  ].join('\r\n'); // CRITICAL FIX: Gmail strictly requires \r\n for MIME headers
 
-  // Convert to Base64URL format (Required by Google)
-  return Buffer.from(str).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  // Modern Node.js base64url encoding
+  return Buffer.from(str).toString('base64url'); 
 };
 
-
-// 3. Send Donation Receipt
 export const sendReceiptEmail = async (donorEmail, donorName, ngoName, amount, receiptUrl) => {
   try {
     const gmail = await createGmailClient();
@@ -72,7 +67,6 @@ export const sendReceiptEmail = async (donorEmail, donorName, ngoName, amount, r
       </div>
     `;
 
-    // Send the email via pure HTTPS REST API!
     await gmail.users.messages.send({
       userId: 'me',
       requestBody: { raw: encodeMessage(donorEmail, subject, htmlBody) }
@@ -81,11 +75,10 @@ export const sendReceiptEmail = async (donorEmail, donorName, ngoName, amount, r
     console.log(`✅ Automated receipt sent to: ${donorEmail}`);
   } catch (error) {
     console.error("❌ Gmail API Error:", error);
+    throw error; // Throw error so the controller knows it failed
   }
 };
 
-
-// 4. Send Security/OTP Emails
 export const sendEmail = async ({ email, subject, message }) => {
   try {
     const gmail = await createGmailClient();
@@ -101,7 +94,6 @@ export const sendEmail = async ({ email, subject, message }) => {
       </div>
     `;
 
-    // Send the email via pure HTTPS REST API!
     await gmail.users.messages.send({
       userId: 'me',
       requestBody: { raw: encodeMessage(email, subject, htmlBody) }
@@ -110,5 +102,6 @@ export const sendEmail = async ({ email, subject, message }) => {
     console.log(`✅ Security email sent to: ${email}`);
   } catch (error) {
     console.error("❌ Generic Email API Error:", error);
+    throw error; // Throw error so the controller knows it failed
   }
 };

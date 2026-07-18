@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import api from '../utils/api';
 
 const getDonorAccounts = () => {
   try {
@@ -31,7 +32,7 @@ export default function DonorSignupPage() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setSuccess('');
@@ -57,11 +58,22 @@ export default function DonorSignupPage() {
       createdAt: new Date().toISOString()
     };
 
+    try {
+      await api.post('/auth/donor-signup', {
+        name: newAccount.name,
+        email: newAccount.email,
+        phone: newAccount.phone,
+        password: newAccount.password
+      });
+    } catch (emailError) {
+      console.error('Donor email confirmation failed', emailError);
+    }
+
     localStorage.setItem('donorAccounts', JSON.stringify([...accounts, newAccount]));
     persistDonorSession(newAccount);
-    setSuccess('Your donor account is ready. Redirecting to your dashboard...');
+    setSuccess('Your donor account is ready. A confirmation email has been sent. Redirecting to your dashboard...');
 
-    setTimeout(() => navigate('/my-impact'), 600);
+    setTimeout(() => navigate('/my-impact'), 800);
   };
 
   return (

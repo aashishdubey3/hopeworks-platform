@@ -30,13 +30,33 @@ export const registerNgo = async (req, res) => {
 
     const emailMessage = `Welcome to HopeWorks! Your email verification code is: ${otp}. This code expires in 10 minutes.`;
     
-    // THE FIX: Fire and forget! Send email in background.
-    sendEmail({ email: ngo.email, subject: 'HopeWorks - Verify Your Email', message: emailMessage }).catch(console.error);
+    // CRITICAL FIX: Await the email so Vercel doesn't kill the lambda function
+    await sendEmail({ email: ngo.email, subject: 'HopeWorks - Verify Your Email', message: emailMessage });
 
     res.status(201).json({ message: 'Registration initiated. Please check your email for the 6-digit verification code.', email: ngo.email });
   } catch (error) {
     console.error("Registration Error:", error);
-    res.status(500).json({ message: 'Server error during registration.' });
+    res.status(500).json({ message: 'Server error during registration. Email may not have sent.' });
+  }
+};
+
+export const registerDonor = async (req, res) => {
+  try {
+    const { name, email, phone, password } = req.body;
+
+    if (!name || !email || !password) {
+      return res.status(400).json({ message: 'Please provide your name, email, and password.' });
+    }
+
+    const subject = 'Welcome to HopeWorks';
+    const message = `Hi ${name},\n\nThank you for joining HopeWorks as a supporter. Your donor account is ready, and you can now track donations, download receipts, and follow your impact from your personal dashboard.\n\nIf you have any questions, our team is happy to help.\n\nWith gratitude,\nThe HopeWorks Team`;
+
+    await sendEmail({ email: email.toLowerCase(), subject, message });
+
+    res.status(201).json({ message: 'Donor confirmation email sent successfully.' });
+  } catch (error) {
+    console.error('Donor signup email error:', error);
+    res.status(500).json({ message: 'We could not send the confirmation email.' });
   }
 };
 
@@ -97,12 +117,11 @@ export const forgotPassword = async (req, res) => {
     ngo.resetPasswordExpires = Date.now() + 15 * 60 * 1000; 
     await ngo.save();
 
-    // Replace localhost with your actual live Vercel domain
-const resetUrl = `https://hopeworks-platform.vercel.app/reset-password/${resetToken}`;
+    const resetUrl = `https://hopeworks-platform.vercel.app/reset-password/${resetToken}`;
     const message = `You requested a password reset. Please click this link to set a new password: \n\n ${resetUrl} \n\n This link expires in 15 minutes.`;
 
-    // THE FIX: Fire and forget! Instant response for the user.
-    sendEmail({ email: ngo.email, subject: 'HopeWorks - Password Reset', message }).catch(console.error);
+    // CRITICAL FIX: Await the email
+    await sendEmail({ email: ngo.email, subject: 'HopeWorks - Password Reset', message });
 
     res.status(200).json({ message: 'Password reset link sent to your email.' });
   } catch (error) {
@@ -141,15 +160,15 @@ export const resendOtp = async (req, res) => {
     ngo.otpExpires = Date.now() + 10 * 60 * 1000;
     await ngo.save();
 
-    // THE FIX: Fire and forget!
-    sendEmail({ 
+    // CRITICAL FIX: Await the email
+    await sendEmail({ 
       email: ngo.email, 
       subject: 'HopeWorks - New Verification Code', 
       message: `Your new verification code is: ${otp}. It expires in 10 minutes.` 
-    }).catch(console.error);
+    });
 
     res.status(200).json({ message: 'New verification code sent to your email.' });
   } catch (error) {
-    res.status(500).json({ message: 'Server error.' });
+    res.status(500).json({ message: 'Server error resending OTP.' });
   }
 };

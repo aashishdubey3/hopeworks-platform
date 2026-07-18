@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../utils/api';
+import { useAuth } from '../context/AuthContext';
 
 const getStoredDonor = (email) => {
   try {
@@ -13,6 +14,7 @@ const getStoredDonor = (email) => {
 
 export default function DonorLoginPage() {
   const navigate = useNavigate();
+  const { setLoggedInNgo } = useAuth();
   const [formData, setFormData] = useState({ name: '', email: '', password: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -48,6 +50,10 @@ export default function DonorLoginPage() {
         role: 'donor',
         token: 'donor-local-session'
       };
+      localStorage.removeItem('ngoData');
+      localStorage.removeItem('ngoInfo');
+      localStorage.removeItem('loggedInNgoId');
+      setLoggedInNgo(null);
       localStorage.setItem('userInfo', JSON.stringify(donorSession));
       localStorage.setItem('token', donorSession.token);
       setLoading(false);
@@ -69,6 +75,10 @@ export default function DonorLoginPage() {
         token: response.data.token
       };
 
+      localStorage.removeItem('ngoData');
+      localStorage.removeItem('ngoInfo');
+      localStorage.removeItem('loggedInNgoId');
+      setLoggedInNgo(null);
       localStorage.setItem('userInfo', JSON.stringify(donorSession));
       localStorage.setItem('token', donorSession.token);
       setLoading(false);
