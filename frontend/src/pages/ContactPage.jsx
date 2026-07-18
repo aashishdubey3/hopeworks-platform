@@ -1,21 +1,33 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import api from '../utils/api'; // <-- IMPORTED API
 
 const ContactPage = () => {
   const [feedback, setFeedback] = useState({ name: '', email: '', message: '' });
   const [submitted, setSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false); // <-- ADDED LOADING STATE
 
   const handleChange = (e) => {
     setFeedback({ ...feedback, [e.target.name]: e.target.value });
   };
 
-  const handleFeedbackSubmit = (e) => {
+  const handleFeedbackSubmit = async (e) => {
     e.preventDefault();
-    // In the future, you can connect this to an api.post('/feedback') route
-    console.log('Feedback submitted:', feedback);
-    setSubmitted(true);
-    setFeedback({ name: '', email: '', message: '' });
-    setTimeout(() => setSubmitted(false), 4000);
+    setIsSubmitting(true);
+    
+    try {
+      // POST the feedback to your backend
+      await api.post('/contact', feedback);
+      
+      setSubmitted(true);
+      setFeedback({ name: '', email: '', message: '' });
+      setTimeout(() => setSubmitted(false), 4000);
+    } catch (error) {
+      console.error("Failed to submit feedback", error);
+      alert("Failed to submit feedback. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -110,9 +122,10 @@ const ContactPage = () => {
             </div>
             <button
               type="submit"
-              className="px-6 py-2 font-bold text-white transition rounded-md bg-[#0B2948] hover:bg-[#1a3a5c]"
+              disabled={isSubmitting}
+              className="px-6 py-2 font-bold text-white transition rounded-md bg-[#0B2948] hover:bg-[#1a3a5c] disabled:opacity-50"
             >
-              Submit Feedback
+              {isSubmitting ? 'Submitting...' : 'Submit Feedback'}
             </button>
           </form>
         )}

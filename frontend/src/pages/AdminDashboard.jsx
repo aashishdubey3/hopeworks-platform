@@ -8,6 +8,7 @@ export default function AdminDashboard() {
   const [campaigns, setCampaigns] = useState([]);
   const [csrLeads, setCsrLeads] = useState([]);
   const [donations, setDonations] = useState([]);
+  const [messages, setMessages] = useState([]); // <-- ADDED: Messages state
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   
@@ -17,16 +18,18 @@ export default function AdminDashboard() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [ngoRes, campRes, csrRes, donationRes] = await Promise.all([
+      const [ngoRes, campRes, csrRes, donationRes, messageRes] = await Promise.all([
         api.get('/admin/ngos'),
         api.get('/admin/campaigns'),
         api.get('/admin/csr').catch(() => ({ data: [] })),
-        api.get('/payments/all-donations').catch(() => ({ data: [] })) 
+        api.get('/payments/all-donations').catch(() => ({ data: [] })),
+        api.get('/admin/messages').catch(() => ({ data: [] })) // <-- ADDED: Fetch messages
       ]);
       setNgos(ngoRes.data);
       setCampaigns(campRes.data);
       setCsrLeads(csrRes.data);
       setDonations(donationRes.data);
+      setMessages(messageRes.data); // <-- ADDED: Set messages
     } catch (error) {
       console.error("Admin fetch error:", error);
     } finally {
@@ -119,7 +122,6 @@ export default function AdminDashboard() {
                 </div>
                 <div>
                   <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Registration Date</p>
-                  {/* THE FIX: Safe Date Parsing */}
                   <p className="text-sm font-bold text-slate-700">{new Date(auditNgo.createdAt || Date.now()).toLocaleDateString()}</p>
                 </div>
                 <div>
@@ -190,6 +192,11 @@ export default function AdminDashboard() {
             </button>
             <button onClick={() => setActiveTab('csr')} className={`px-5 py-2.5 rounded-lg font-bold text-sm transition-all ${activeTab === 'csr' ? 'bg-[#007A78] text-white shadow-md' : 'text-slate-300 hover:text-white'}`}>
               CSR
+            </button>
+            {/* <-- ADDED: Messages Tab --> */}
+            <button onClick={() => setActiveTab('messages')} className={`px-5 py-2.5 rounded-lg font-bold text-sm transition-all flex items-center gap-2 ${activeTab === 'messages' ? 'bg-[#007A78] text-white shadow-md' : 'text-slate-300 hover:text-white'}`}>
+              Feedback
+              {messages.length > 0 && <span className="bg-blue-500 text-white text-[10px] px-2 py-0.5 rounded-full shadow-sm">{messages.length}</span>}
             </button>
           </div>
         </div>
@@ -348,7 +355,6 @@ export default function AdminDashboard() {
                   ) : (
                     donations.map((tx, idx) => (
                       <tr key={idx} className="hover:bg-slate-50 transition-colors">
-                        {/* THE FIX: Safe Date Parsing */}
                         <td className="p-5 text-sm text-slate-600">{new Date(tx.createdAt || tx.date || Date.now()).toLocaleDateString()}</td>
                         <td className="p-5 font-bold text-[#0B2948] text-sm">{tx.donorName || 'Anonymous'}</td>
                         <td className="p-5 font-black text-[#007A78] text-sm">₹{tx.amount?.toLocaleString('en-IN')}</td>
@@ -382,7 +388,6 @@ export default function AdminDashboard() {
                       <tr key={lead._id} className={`${lead.status === 'Pending Review' ? 'bg-[#007A78]/5' : 'hover:bg-slate-50'} transition-colors`}>
                         <td className="p-5">
                           <p className="font-bold text-[#0B2948] text-sm">{lead.companyName}</p>
-                          {/* THE FIX: Safe Date Parsing */}
                           <p className="text-[10px] text-slate-400 mt-1 font-medium">Logged: {new Date(lead.createdAt || Date.now()).toLocaleDateString()}</p>
                         </td>
                         <td className="p-5">
@@ -408,6 +413,39 @@ export default function AdminDashboard() {
                           >
                             {lead.status}
                           </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            )}
+
+            {/* TAB 5: MESSAGES / FEEDBACK */}
+            {activeTab === 'messages' && (
+              <table className="w-full text-left border-collapse whitespace-nowrap min-w-max">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200 text-[11px] text-slate-500 uppercase tracking-widest font-black">
+                    <th className="p-5">Date</th>
+                    <th className="p-5">User Info</th>
+                    <th className="p-5">Message</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {messages.length === 0 ? (
+                    <tr><td colSpan="3" className="p-10 text-center text-slate-400 font-medium text-sm">No feedback or messages available yet.</td></tr>
+                  ) : (
+                    messages.map((msg) => (
+                      <tr key={msg._id} className="hover:bg-slate-50 transition-colors">
+                        <td className="p-5 text-sm text-slate-600">
+                          {new Date(msg.createdAt || Date.now()).toLocaleDateString()}
+                        </td>
+                        <td className="p-5">
+                          <p className="font-bold text-[#0B2948] text-sm">{msg.name}</p>
+                          <p className="text-xs text-slate-500 mt-0.5">{msg.email}</p>
+                        </td>
+                        <td className="p-5">
+                          <p className="text-sm text-slate-700 whitespace-pre-wrap max-w-xl truncate">{msg.message}</p>
                         </td>
                       </tr>
                     ))

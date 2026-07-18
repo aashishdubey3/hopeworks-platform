@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import connectDB from './config/db.js';
 import campaignRoutes from './routes/campaignRoutes.js';
+import contactRoutes from './routes/contactRoutes.js';
 
 // Route Imports
 import ngoRoutes from './routes/ngoRoutes.js';
@@ -32,6 +33,7 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/csr', csrRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/contact', contactRoutes);
 
 // Expose the uploads folder to the frontend
 const __dirname = path.resolve();

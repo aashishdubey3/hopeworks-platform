@@ -7,7 +7,9 @@ import {
   getAllCampaigns, 
   deleteCampaign,
   getAllCsrInquiries, 
-  toggleCsrStatus     
+  toggleCsrStatus, 
+  getContactMessages
+
 } from '../controllers/adminController.js';
 import { verifyAdmin } from '../middleware/authMiddleware.js';
 
@@ -20,6 +22,7 @@ router.post('/login', loginAdmin);
 router.get('/ngos', verifyAdmin, getAllNgos);
 router.put('/ngo/:id/status', verifyAdmin, toggleNgoStatus);
 router.get('/campaigns', verifyAdmin, getAllCampaigns);
+router.get('/messages', verifyAdmin, getContactMessages);
 router.delete('/campaign/:id', verifyAdmin, deleteCampaign);
 
 // Protected CSR Routes

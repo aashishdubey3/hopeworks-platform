@@ -134,3 +134,15 @@ export const toggleCsrStatus = async (req, res) => {
     res.status(500).json({ message: "Server error updating status" });
   }
 };
+import ContactMessage from '../models/ContactMessage.js';
+
+// @desc    Get all contact/feedback messages
+// @route   GET /api/admin/messages
+export const getContactMessages = async (req, res) => {
+  try {
+    const messages = await ContactMessage.find({}).sort({ createdAt: -1 });
+    res.json(messages);
+  } catch (error) {
+    res.status(500).json({ message: "Server error fetching messages" });
+  }
+};
