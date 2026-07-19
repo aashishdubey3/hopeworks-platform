@@ -1,5 +1,5 @@
 import express from 'express';
-import { submitFeedback } from '../controllers/TEMP_controller.js';
+import { submitFeedback } from '../controllers/contactController.js';
 
 const router = express.Router();
 
