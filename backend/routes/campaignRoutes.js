@@ -5,11 +5,10 @@ import {
   getCampaignById, 
   getMyCampaigns,
   getCampaignsByNgoId,
-  updateCampaign,     // <-- Imported
-  deleteCampaign      // <-- Imported
+  updateCampaign,     
+  deleteCampaign      
 } from '../controllers/campaignController.js'; 
 
-// Ensure these match your actual folder name EXACTLY
 import upload from '../middleware/uploadMiddleware.js';
 import { protect } from '../middleware/authMiddleware.js';
 
@@ -18,19 +17,17 @@ const router = express.Router();
 // 1. PUBLIC ROUTES
 router.get('/', getCampaigns); 
 
-// 2. PROTECTED NGO ROUTES
+// 2. PROTECTED NGO ROUTES (Must come before /:id)
 router.get('/my', protect, getMyCampaigns); 
+router.get('/ngo/:id', getCampaignsByNgoId);
 
 // CRITICAL: upload.single('image') intercepts the file and sends it to Cloudinary
 router.post('/', protect, upload.single('image'), createCampaign);
 
-// 3. NGO PUBLIC PROFILE ROUTE (Must come before /:id)
-router.get('/ngo/:id', getCampaignsByNgoId);
-
-// 4. DYNAMIC ID ROUTES (Must stay at the bottom!)
+// 3. DYNAMIC ID ROUTES (Must stay at the bottom!)
 router.get('/:id', getCampaignById);
 
-// NEW: Edit & Delete Routes with protection and image handling
+// Edit & Delete Routes with protection and image handling
 router.put('/:id', protect, upload.single('image'), updateCampaign);
 router.delete('/:id', protect, deleteCampaign);
 

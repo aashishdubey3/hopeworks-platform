@@ -39,9 +39,7 @@ export const createCampaign = async (req, res) => {
       return res.status(401).json({ message: 'Not authorized to create campaign' });
     }
 
-    // THE FIX: Safely grab the ID regardless of how the token formatted it
     const userId = user._id || user.id;
-
     const uploadedImage = req.file ? req.file.path : null;
 
     const campaign = await Campaign.create({
@@ -56,7 +54,8 @@ export const createCampaign = async (req, res) => {
       ngoId: userId, 
       host: user.name || "Verified NGO", 
       raisedAmount: 0, 
-      raised: 0
+      raised: 0,
+      status: 'active' // THE FIX: Defaulting to active so the dashboard sees it
     });
 
     res.status(201).json(campaign);
@@ -71,7 +70,7 @@ export const createCampaign = async (req, res) => {
 export const getMyCampaigns = async (req, res) => {
   try {
     const user = req.user || req.ngo;
-    const userId = user._id || user.id; // THE FIX
+    const userId = user._id || user.id; 
     
     const campaigns = await Campaign.find({
       $or: [
@@ -113,7 +112,6 @@ export const updateCampaign = async (req, res) => {
       return res.status(404).json({ message: 'Campaign not found' });
     }
 
-    // THE FIX: Bulletproof ownership check
     const campaignOwnerId = campaign.ngo || campaign.ngoId;
     const userId = user._id || user.id; 
     
@@ -155,7 +153,6 @@ export const deleteCampaign = async (req, res) => {
       return res.status(404).json({ message: 'Campaign not found' });
     }
 
-    // THE FIX: Bulletproof ownership check
     const campaignOwnerId = campaign.ngo || campaign.ngoId;
     const userId = user._id || user.id;
     
