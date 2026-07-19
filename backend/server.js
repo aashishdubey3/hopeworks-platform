@@ -12,7 +12,7 @@ import authRoutes from './routes/authRoutes.js';
 import csrRoutes from './routes/csrRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import path from 'path';
-import contactRoutes from './routes/contactRoutes.js';
+import contactRoutes from './routes/TEMP_routes.js';
 
 
 // Load environment variables
