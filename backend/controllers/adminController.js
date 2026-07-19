@@ -1,6 +1,7 @@
 import Ngo from '../models/Ngo.js';
 import Campaign from '../models/Campaign.js';
 import CsrInquiry from '../models/CsrInquiry.js';
+import ContactMessage from '../models/ContactMessage.js';
 import jwt from 'jsonwebtoken';
 
 // @desc    Admin Login
@@ -134,7 +135,10 @@ export const toggleCsrStatus = async (req, res) => {
     res.status(500).json({ message: "Server error updating status" });
   }
 };
-import ContactMessage from '../models/ContactMessage.js';
+
+// ==========================================
+// NEW: PLATFORM FEEDBACK MANAGEMENT
+// ==========================================
 
 // @desc    Get all contact/feedback messages
 // @route   GET /api/admin/messages
@@ -143,6 +147,7 @@ export const getContactMessages = async (req, res) => {
     const messages = await ContactMessage.find({}).sort({ createdAt: -1 });
     res.json(messages);
   } catch (error) {
+    console.error("Error fetching messages:", error);
     res.status(500).json({ message: "Server error fetching messages" });
   }
 };
