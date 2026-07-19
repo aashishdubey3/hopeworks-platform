@@ -1,4 +1,4 @@
-import mongoose from 'submit-message';
+import mongoose from 'mongoose';
 
 const contactMessageSchema = new mongoose.Schema({
   name: { type: String, required: true },
